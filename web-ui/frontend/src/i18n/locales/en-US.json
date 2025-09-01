@@ -73,7 +73,15 @@
     "api_test_success": "API connection test successful",
     "database_test_success": "Database connection test successful",
     "backend_save_failed": "Backend save failed, saved to local settings",
-    "database_load_failed": "Failed to load database list"
+    "database_load_failed": "Failed to load database list",
+    "custom_api": "Custom API",
+    "query_mode_config": "Query Mode Configuration",
+    "query_mode_config_description": "Select which query modes to display in the chat interface. Configuration will be saved in your local browser.",
+    "parse_local_mode_failed": "Failed to parse local mode settings",
+    "load_settings_error": "Failed to load settings",
+    "save_settings_error": "Failed to save settings",
+    "default_database_wukong": "Journey to the West Hypergraph",
+    "default_database_christmas": "A Christmas Carol Hypergraph"
   },
   "database": {
     "title": "Database Management",
@@ -188,7 +196,10 @@
   },
   "api": {
     "title": "API Interface",
-    "description": "View and test API interfaces"
+    "description": "View and test API interfaces",
+    "load_failed": "Failed to load API documentation",
+    "ensure_backend": "Please ensure the backend service is running at",
+    "documentation_title": "API Documentation"
   },
   "graph": {
     "title": "Knowledge Graph",
@@ -210,7 +221,15 @@
   },
   "home": {
     "title": "Welcome to Hyper-RAG",
-    "description": "Retrieval-Augmented Generation System based on Hypergraphs"
+    "description": "Retrieval-Augmented Generation System based on Hypergraphs",
+    "thinking": "Thinking...",
+    "compare_mode": "Compare",
+    "comparing_analyzing": "Comparing and analyzing...",
+    "compare_complete": "Comparison analysis complete",
+    "compare_error": "Comparison analysis error: {{error}}",
+    "compare_analysis": "Comparison Analysis",
+    "compare_placeholder": "Compare {{mode1}} and {{mode2}} answers...",
+    "default_placeholder": "Ask me anything about your knowledge base..."
   },
   "retrieval": {
     "title": "Visualization",
@@ -235,5 +254,39 @@
     "expand": "Expand",
     "properties": "Properties",
     "keywords": "Keywords"
+  },
+  "queryModes": {
+    "llm": {
+      "label": "LLM",
+      "description": "Direct answers using large language model only"
+    },
+    "naive": {
+      "label": "RAG",
+      "description": "Basic retrieval-augmented generation"
+    },
+    "graph": {
+      "label": "Graph-RAG",
+      "description": "Graph-based retrieval-augmented generation"
+    },
+    "hyper": {
+      "label": "Hyper-RAG",
+      "description": "Hypergraph-based retrieval-augmented generation"
+    },
+    "hyperLite": {
+      "label": "Hyper-RAG-Lite",
+      "description": "Lightweight hypergraph retrieval-augmented generation"
+    },
+    "available_modes": "Available Query Modes",
+    "select_modes_help": "Select which query modes to enable in the chat interface"
+  },
+  "notFound": {
+    "title": "404",
+    "subtitle": "Sorry! The page you visited does not exist",
+    "backHome": "Back to Home"
+  },
+  "error": {
+    "superAdmin": "Super Administrator",
+    "adminDescription": "Has all viewing and operation permissions",
+    "loadDbFailed": "Failed to load database list"
   }
 }

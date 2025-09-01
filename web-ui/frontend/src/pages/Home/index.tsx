@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { observer } from 'mobx-react'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import {
     MessageCircle,
@@ -39,6 +40,7 @@ import RetrievalHyperGraph from '../../components/RetrievalHyperGraph'
 import { conversations as defaultConversations } from './data'
 
 const HyperRAGHome = () => {
+    const { t } = useTranslation()
     // State
     const [conversations, setConversations] = useState([])
     const [activeConversationId, setActiveConversationId] = useState('')
@@ -268,7 +270,7 @@ return
 
         if (isCompareMode) {
             // 对比模式：同时查询两个模式
-            addMessage('正在对比分析中...', 'compare', { isCompare: true })
+            addMessage(t('home.comparing_analyzing'), 'compare', { isCompare: true })
 
             try {
                 const [result1, result2] = await Promise.all([
@@ -305,20 +307,20 @@ return
                     }
                 }
 
-                updateLastMessage('对比分析完成', {
+                updateLastMessage(t('home.compare_complete'), {
                     isCompare: true,
                     compareResults: compareResults
                 })
 
             } catch (error) {
                 console.error('Error in compare mode:', error)
-                updateLastMessage(`对比分析出错: ${error instanceof Error ? error.message : 'Unknown error'}`, {
+                updateLastMessage(t('home.compare_error', { error: error instanceof Error ? error.message : 'Unknown error' }), {
                     isCompare: true
                 })
             }
         } else {
             // 单模式查询（原有逻辑）
-            addMessage('正在思考中...', queryMode)
+            addMessage(t('home.thinking'), queryMode)
 
             try {
                 const data = await querySingleMode(userMessage, queryMode)
@@ -420,7 +422,7 @@ return
                                         onChange={(e) => setIsCompareMode(e.target.checked)}
                                         className="rounded"
                                     />
-                                    <span className="text-sm font-medium text-gray-700 ml-1">对比</span>
+                                    <span className="text-sm font-medium text-gray-700 ml-1">{t('home.compare_mode')}</span>
                                     <GitCompare className="w-4 h-4 text-blue-500" />
                                 </label>
                             </div>
@@ -620,7 +622,7 @@ return
                                         <div className="flex-1 space-y-2">
                                             <div className="flex items-center space-x-2">
                                                 <span className="font-medium text-gray-900">
-                                                    {message.isCompare ? '对比分析' : getModeLabel(message.role)}
+                                                    {message.isCompare ? t('home.compare_analysis') : getModeLabel(message.role)}
                                                 </span>
                                                 <span className="text-xs text-gray-500">
                                                     {new Date(message.timestamp).toLocaleTimeString()}
@@ -834,8 +836,8 @@ return
                                     onChange={(e) => setInputValue(e.target.value)}
                                     onKeyPress={handleKeyPress}
                                     placeholder={isCompareMode
-                                        ? `对比 ${getModeLabel(compareMode1)} 和 ${getModeLabel(compareMode2)} 的回答...`
-                                        : "Ask me anything about your knowledge base..."
+                                        ? t('home.compare_placeholder', { mode1: getModeLabel(compareMode1), mode2: getModeLabel(compareMode2) })
+                                        : t('home.default_placeholder')
                                     }
                                     className="flex-1 h-7 resize-none"
                                     disabled={isLoading}

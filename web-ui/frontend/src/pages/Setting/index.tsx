@@ -56,15 +56,15 @@ const Setting: React.FC = () => {
 
   // 可用的查询模式配置
   const queryModes = [
-    { value: 'llm', label: 'LLM', icon: '🤖', description: '仅使用大语言模型直接回答' },
-    { value: 'naive', label: 'RAG', icon: '📚', description: '基础检索增强生成' },
-    { value: 'graph', label: 'Graph-RAG', icon: '🕸️', description: '基于图结构的检索增强生成' },
-    { value: 'hyper', label: 'Hyper-RAG', icon: '⚡', description: '基于超图的检索增强生成' },
+    { value: 'llm', label: t('queryModes.llm.label'), icon: '🤖', description: t('queryModes.llm.description') },
+    { value: 'naive', label: t('queryModes.naive.label'), icon: '📚', description: t('queryModes.naive.description') },
+    { value: 'graph', label: t('queryModes.graph.label'), icon: '🕸️', description: t('queryModes.graph.description') },
+    { value: 'hyper', label: t('queryModes.hyper.label'), icon: '⚡', description: t('queryModes.hyper.description') },
     {
       value: 'hyper-lite',
-      label: 'Hyper-RAG-Lite',
+      label: t('queryModes.hyperLite.label'),
       icon: '🔸',
-      description: '轻量级超图检索增强生成'
+      description: t('queryModes.hyperLite.description')
     }
   ]
 
@@ -90,7 +90,7 @@ const Setting: React.FC = () => {
     },
     {
       value: 'custom',
-      label: t('settings.custom_api') || '自定义API',
+      label: t('settings.custom_api'),
       models: ['custom-model'],
       defaultBaseUrl: 'http://localhost:11434'
     }
@@ -107,7 +107,7 @@ const Setting: React.FC = () => {
         try {
           modeSettings = JSON.parse(localModeSettings)
         } catch (e) {
-          console.error('解析本地Mode设置失败:', e)
+          console.error(t('settings.parse_local_mode_failed'), e)
         }
       }
 
@@ -120,7 +120,7 @@ const Setting: React.FC = () => {
         form.setFieldsValue({ ...defaultSettings, ...modeSettings })
       }
     } catch (error) {
-      console.error('加载设置失败:', error)
+      console.error(t('settings.load_settings_error'), error)
       // 尝试加载本地Mode设置
       const localModeSettings = localStorage.getItem('hyperrag_mode_settings')
       let modeSettings = {}
@@ -128,7 +128,7 @@ const Setting: React.FC = () => {
         try {
           modeSettings = JSON.parse(localModeSettings)
         } catch (e) {
-          console.error('解析本地Mode设置失败:', e)
+          console.error(t('settings.parse_local_mode_failed'), e)
         }
       }
       form.setFieldsValue({ ...defaultSettings, ...modeSettings })
@@ -147,11 +147,11 @@ const Setting: React.FC = () => {
         setAvailableDatabases(databases)
       }
     } catch (error) {
-      console.error('加载数据库列表失败:', error)
+      console.error(t('settings.database_load_failed'), error)
       // 如果API不存在，提供一些默认选项
       setAvailableDatabases([
-        { name: 'hypergraph_wukong', description: '西游记超图' },
-        { name: 'hypergraph_A_Christmas_Carol', description: '圣诞颂歌超图' }
+        { name: 'hypergraph_wukong', description: t('settings.default_database_wukong') },
+        { name: 'hypergraph_A_Christmas_Carol', description: t('settings.default_database_christmas') }
       ])
     }
   }
@@ -183,7 +183,7 @@ const Setting: React.FC = () => {
         throw new Error(t('settings.save_failed'))
       }
     } catch (error) {
-      console.error('保存设置失败:', error)
+      console.error(t('settings.save_settings_error'), error)
       // 即使后端保存失败，也保存到本地存储
       const { availableModes, ...otherSettings } = values
       localStorage.setItem('hyperrag_settings', JSON.stringify(otherSettings))
@@ -441,14 +441,14 @@ const Setting: React.FC = () => {
             title={
               <span>
                 <AppstoreOutlined style={{ marginRight: '8px' }} />
-                查询模式配置
+                {t('settings.query_mode_config')}
               </span>
             }
             style={{ marginBottom: '24px' }}
           >
             <Alert
-              message="查询模式配置"
-              description="选择在聊天界面中显示的查询模式。配置将保存在本地浏览器中。"
+              message={t('settings.query_mode_config')}
+              description={t('settings.query_mode_config_description')}
               type="info"
               showIcon
               style={{ marginBottom: '24px' }}
@@ -456,8 +456,8 @@ const Setting: React.FC = () => {
 
             <Form.Item
               name="availableModes"
-              label="可用的查询模式"
-              extra="选择在聊天界面侧边栏中显示的查询模式"
+              label={t('queryModes.available_modes')}
+              extra={t('queryModes.select_modes_help')}
             >
               <Checkbox.Group style={{ width: '100%' }}>
                 <Row gutter={[16, 16]}>

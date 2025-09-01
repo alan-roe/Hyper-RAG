@@ -73,7 +73,15 @@
     "api_test_success": "API连接测试成功",
     "database_test_success": "数据库连接测试成功",
     "backend_save_failed": "后端保存失败，已保存到本地设置",
-    "database_load_failed": "加载数据库列表失败"
+    "database_load_failed": "加载数据库列表失败",
+    "custom_api": "自定义API",
+    "query_mode_config": "查询模式配置",
+    "query_mode_config_description": "选择在聊天界面中显示的查询模式。配置将保存在本地浏览器中。",
+    "parse_local_mode_failed": "解析本地Mode设置失败",
+    "load_settings_error": "加载设置失败",
+    "save_settings_error": "保存设置失败",
+    "default_database_wukong": "西游记超图",
+    "default_database_christmas": "圣诞颂歌超图"
   },
   "database": {
     "title": "数据库管理",
@@ -188,7 +196,10 @@
   },
   "api": {
     "title": "API接口",
-    "description": "查看和测试API接口"
+    "description": "查看和测试API接口",
+    "load_failed": "无法加载API文档",
+    "ensure_backend": "请确保后端服务已启动并运行在",
+    "documentation_title": "API文档"
   },
   "graph": {
     "title": "知识图谱",
@@ -210,7 +221,15 @@
   },
   "home": {
     "title": "欢迎使用 Hyper-RAG",
-    "description": "基于超图的检索增强生成系统"
+    "description": "基于超图的检索增强生成系统",
+    "thinking": "正在思考中...",
+    "compare_mode": "对比",
+    "comparing_analyzing": "正在对比分析中...",
+    "compare_complete": "对比分析完成",
+    "compare_error": "对比分析出错: {{error}}",
+    "compare_analysis": "对比分析",
+    "compare_placeholder": "对比 {{mode1}} 和 {{mode2}} 的回答...",
+    "default_placeholder": "请输入您的问题..."
   },
   "retrieval": {
     "title": "检索结果可视化",
@@ -235,5 +254,39 @@
     "expand": "展开",
     "properties": "属性",
     "keywords": "关键词"
+  },
+  "queryModes": {
+    "llm": {
+      "label": "LLM",
+      "description": "仅使用大语言模型直接回答"
+    },
+    "naive": {
+      "label": "RAG",
+      "description": "基础检索增强生成"
+    },
+    "graph": {
+      "label": "Graph-RAG",
+      "description": "基于图结构的检索增强生成"
+    },
+    "hyper": {
+      "label": "Hyper-RAG",
+      "description": "基于超图的检索增强生成"
+    },
+    "hyperLite": {
+      "label": "Hyper-RAG-Lite",
+      "description": "轻量级超图检索增强生成"
+    },
+    "available_modes": "可用的查询模式",
+    "select_modes_help": "选择在聊天界面中启用的查询模式"
+  },
+  "notFound": {
+    "title": "404",
+    "subtitle": "对不起！您访问的页面不存在",
+    "backHome": "返回首页"
+  },
+  "error": {
+    "superAdmin": "超级管理员",
+    "adminDescription": "拥有所有查看和操作功能",
+    "loadDbFailed": "加载数据库列表失败"
   }
 }
