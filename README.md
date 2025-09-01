@@ -91,7 +91,7 @@ git clone https://github.com/iMoonLab/Hyper-RAG.git
 cd Hyper-RAG
 
 # Install dependencies
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ## :white_check_mark: Quick Start
