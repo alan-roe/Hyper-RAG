@@ -57,7 +57,7 @@ uv run python build_hyperrag_db.py /path/to/project --dry-run
 uv run python build_hyperrag_db.py /path/to/project \
   --output ./my_knowledge_base \
   --api-key YOUR_API_KEY \
-  --generation-model gemini-2.0-flash-exp \
+  --generation-model gemini-2.5-flash-lite \
   --embedding-model gemini-embedding-001 \
   --embedding-dim 768 \
   --temperature 0.1 \
@@ -164,7 +164,7 @@ uv run python build_hyperrag_db.py ./docs -o ./docs_knowledge_base \
 ### Process a codebase with custom model
 ```bash
 uv run python build_hyperrag_db.py ./src \
-  --generation-model gemini-2.0-flash-exp \
+  --generation-model gemini-2.5-flash-lite \
   --embedding-model gemini-embedding-001 \
   --embedding-dim 768 \
   --temperature 0.1
@@ -186,7 +186,7 @@ client = genai.Client(api_key="your-key")
 # Define functions for HyperRAG
 async def llm_func(prompt, **kwargs):
     response = client.models.generate_content(
-        model='gemini-2.0-flash-exp',
+        model='gemini-2.5-flash-lite',
         contents=prompt
     )
     return response.text
@@ -224,8 +224,8 @@ print(result)
 3. **Rate limits**: Gemini has rate limits; the script handles retries automatically
 4. **Incremental builds**: HyperRAG deduplicates content, so you can safely re-run on updated files
 5. **Model selection**:
-   - Use `gemini-2.0-flash-exp` for faster, cheaper processing
-   - Use `gemini-2.0-pro` for better quality extraction
+   - Use `gemini-2.5-flash-lite` for faster, cheaper processing
+   - Use `gemini-2.5-flash` for better quality extraction
    - Embedding dimension should match your model (768 recommended for gemini-embedding-001)
 
 ## Troubleshooting
