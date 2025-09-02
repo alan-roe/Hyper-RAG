@@ -1,6 +1,6 @@
 import os
 import asyncio
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
 from typing import Type, cast
@@ -100,6 +100,20 @@ class HyperRAG:
     addon_params: dict = field(default_factory=dict)
     convert_response_to_json_func: callable = convert_response_to_json
 
+    def _get_serializable_config(self) -> dict:
+        """Get a serializable dictionary representation of the config, excluding callables."""
+        config = {}
+        for field_name in self.__dataclass_fields__:
+            value = getattr(self, field_name)
+            # Include all non-callable fields
+            if not callable(value):
+                config[field_name] = value
+            # For callable fields, include them as-is for internal use
+            # but they won't be serialized for logging
+            else:
+                config[field_name] = value
+        return config
+
     def __post_init__(self):
         log_file = os.path.join(self.working_dir, "HyperRAG.log")
         set_logger(log_file)
@@ -107,7 +121,16 @@ class HyperRAG:
 
         logger.info(f"Logger initialized for working directory: {self.working_dir}")
 
-        _print_config = ",\n  ".join([f"{k} = {v}" for k, v in asdict(self).items()])
+        # Create a safe config dict for logging (excluding callables)
+        safe_config = {}
+        for k, v in self._get_serializable_config().items():
+            if not callable(v):
+                try:
+                    safe_config[k] = str(v)
+                except:
+                    safe_config[k] = f"<{type(v).__name__}>"
+        
+        _print_config = ",\n  ".join([f"{k} = {v}" for k, v in safe_config.items()])
         logger.debug(f"HyperRAG init with param:\n  {_print_config}\n")
 
         if not os.path.exists(self.working_dir):
@@ -115,16 +138,16 @@ class HyperRAG:
             os.makedirs(self.working_dir)
 
         self.full_docs = self.key_string_value_json_storage_cls(
-            namespace="full_docs", global_config=asdict(self)
+            namespace="full_docs", global_config=self._get_serializable_config()
         )
 
         self.text_chunks = self.key_string_value_json_storage_cls(
-            namespace="text_chunks", global_config=asdict(self)
+            namespace="text_chunks", global_config=self._get_serializable_config()
         )
 
         self.llm_response_cache = (
             self.key_string_value_json_storage_cls(
-                namespace="llm_response_cache", global_config=asdict(self)
+                namespace="llm_response_cache", global_config=self._get_serializable_config()
             )
             if self.enable_llm_cache
             else None
@@ -133,7 +156,7 @@ class HyperRAG:
             download from hgdb_path
         """
         self.chunk_entity_relation_hypergraph = self.hypergraph_storage_cls(
-            namespace="chunk_entity_relation", global_config=asdict(self)
+            namespace="chunk_entity_relation", global_config=self._get_serializable_config()
         )
 
         self.embedding_func = limit_async_func_call(self.embedding_func_max_async)(
@@ -142,19 +165,19 @@ class HyperRAG:
 
         self.entities_vdb = self.vector_db_storage_cls(
             namespace="entities",
-            global_config=asdict(self),
+            global_config=self._get_serializable_config(),
             embedding_func=self.embedding_func,
             meta_fields={"entity_name"},
         )
         self.relationships_vdb = self.vector_db_storage_cls(
             namespace="relationships",
-            global_config=asdict(self),
+            global_config=self._get_serializable_config(),
             embedding_func=self.embedding_func,
             meta_fields={"id_set"},
         )
         self.chunks_vdb = self.vector_db_storage_cls(
             namespace="chunks",
-            global_config=asdict(self),
+            global_config=self._get_serializable_config(),
             embedding_func=self.embedding_func,
         )
 
@@ -222,7 +245,7 @@ class HyperRAG:
                 knowledge_hypergraph_inst=self.chunk_entity_relation_hypergraph,
                 entity_vdb=self.entities_vdb,
                 relationships_vdb=self.relationships_vdb,
-                global_config=asdict(self),
+                global_config=self._get_serializable_config(),
             )
             if maybe_new_kg is None:
                 logger.warning("No new entities and relationships found")
@@ -264,7 +287,7 @@ class HyperRAG:
                 self.relationships_vdb,
                 self.text_chunks,
                 param,
-                asdict(self),
+                self._get_serializable_config(),
             )
         elif param.mode == "hyper-lite":
             response = await hyper_query_lite(
@@ -273,7 +296,7 @@ class HyperRAG:
                 self.entities_vdb,
                 self.text_chunks,
                 param,
-                asdict(self),
+                self._get_serializable_config(),
             )
         elif param.mode == "graph":
             response = await graph_query(
@@ -283,7 +306,7 @@ class HyperRAG:
                 self.relationships_vdb,
                 self.text_chunks,
                 param,
-                asdict(self),
+                self._get_serializable_config(),
             )
         elif param.mode == "naive":
             response = await naive_query(
@@ -291,13 +314,13 @@ class HyperRAG:
                 self.chunks_vdb,
                 self.text_chunks,
                 param,
-                asdict(self),
+                self._get_serializable_config(),
             )
         elif param.mode == "llm":
             response = await llm_query(
                 query,
                 param,
-                asdict(self),
+                self._get_serializable_config(),
             )
         else:
             raise ValueError(f"Unknown mode {param.mode}")
