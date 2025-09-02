@@ -86,6 +86,11 @@
   "database": {
     "title": "Database Management",
     "description": "Manage your hypergraph databases",
+    "refresh_list": "Refresh List",
+    "loading_databases": "Loading database list...",
+    "refresh_success": "Database list refreshed",
+    "refresh_failed": "Failed to refresh database list",
+    "hypergraph_suffix": "Hypergraph",
     "entity_count": "Entity Count",
     "hyperedge_count": "Hyperedge Count",
     "vertices": "Vertices",

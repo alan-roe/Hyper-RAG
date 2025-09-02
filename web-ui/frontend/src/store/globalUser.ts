@@ -1,5 +1,6 @@
 import { makeAutoObservable } from 'mobx'
 import { SERVER_URL } from '../utils'
+import i18n from '../i18n'
 
 class GlobalUser {
   userInfo: Partial<User.UserEntity> = {}
@@ -18,8 +19,8 @@ class GlobalUser {
       roles: [
         {
           id: 5,
-          name: '超级管理员',
-          description: '拥有所有查看和操作功能',
+          name: i18n.t('error.superAdmin'),
+          description: i18n.t('error.adminDescription'),
           adminCount: 0,
           status: 1,
           sort: 5
@@ -80,14 +81,16 @@ class GlobalUser {
   // 获取数据库列表
   async loadDatabases() {
     try {
-      const response = await fetch(`${SERVER_URL}/databases`)
+      // Get the current language from localStorage or i18n
+      const language = localStorage.getItem('language') || i18n.language || 'en-US'
+      const response = await fetch(`${SERVER_URL}/databases?lang=${language}`)
       if (response.ok) {
         const databases = await response.json()
         this.setAvailableDatabases(databases)
         return databases
       }
     } catch (error) {
-      console.error('加载数据库列表失败:', error)
+      console.error(i18n.t('error.loadDbFailed'), error)
     }
     return []
   }

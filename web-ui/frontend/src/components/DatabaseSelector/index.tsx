@@ -95,7 +95,7 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
                                     onClick={handleRefresh}
                                     style={{ width: '100%' }}
                                 >
-                                    刷新列表
+                                    {t('database.refresh_list')}
                                 </Button>
                             </div>
                         )}
@@ -144,7 +144,7 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
                     }}
                     className='py-5 px-3'
                 >
-                    {db.description.replace('超图', '')}
+                    {db.description.replace(t('database.hypergraph_suffix'), '')}
                 </Button>
             ))}
             {showRefresh && (
@@ -186,7 +186,7 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
         return (
             <Space style={style}>
                 <Spin size="small" />
-                <Text type="secondary">加载数据库列表...</Text>
+                <Text type="secondary">{t('database.loading_databases')}</Text>
             </Space>
         );
     }

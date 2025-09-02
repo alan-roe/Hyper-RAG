@@ -86,6 +86,11 @@
   "database": {
     "title": "数据库管理",
     "description": "管理您的超图数据库",
+    "refresh_list": "刷新列表",
+    "loading_databases": "加载数据库列表...",
+    "refresh_success": "数据库列表已刷新",
+    "refresh_failed": "刷新数据库列表失败",
+    "hypergraph_suffix": "超图",
     "entity_count": "实体数量",
     "hyperedge_count": "超边数量",
     "vertices": "实体 (Vertices)",
