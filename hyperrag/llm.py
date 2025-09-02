@@ -2,6 +2,7 @@ import os
 import copy
 from functools import lru_cache
 import json
+import asyncio
 import aioboto3
 import aiohttp
 import numpy as np
@@ -29,6 +30,96 @@ from .base import BaseKVStorage
 from .utils import compute_args_hash, wrap_embedding_func_with_attrs
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+async def gemini_embedding(
+    texts: list[str],
+    model: str = "gemini-embedding-001",
+    api_key: str = None,
+    embedding_dim: int = 768,
+    **kwargs
+) -> np.ndarray:
+    """
+    Generate embeddings using Google Gemini API with retry logic
+    
+    Args:
+        texts: List of texts to embed
+        model: Gemini embedding model name
+        api_key: Gemini API key
+        embedding_dim: Output embedding dimension
+    
+    Returns:
+        numpy array of embeddings
+    """
+    try:
+        from google import genai
+        from google.genai import types
+        from google.genai import errors
+    except ImportError:
+        raise ImportError("Please install google-genai: pip install google-genai")
+    
+    if api_key:
+        os.environ["GOOGLE_API_KEY"] = api_key
+    
+    client = genai.Client(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
+    
+    # Process in smaller batches to avoid rate limits
+    # Gemini has limits: 100 requests/min, 30000 tokens/min, 1000 requests/day
+    max_batch_size = 2  # Reduced batch size to avoid rate limits
+    all_embeddings = []
+    
+    for i in range(0, len(texts), max_batch_size):
+        batch = texts[i:i + max_batch_size]
+        
+        # Truncate texts that are too long (gemini-embedding-001 has 2048 token limit)
+        truncated_batch = []
+        for text in batch:
+            # More conservative truncation at ~1500 tokens (assuming ~1.3 tokens per word)
+            max_words = int(1500 / 1.3)
+            words = text.split()[:max_words]
+            truncated_batch.append(' '.join(words))
+        
+        # Retry logic for rate limits
+        max_retries = 3
+        retry_delay = 1.0
+        
+        for attempt in range(max_retries):
+            try:
+                # Generate embeddings for batch
+                response = client.models.embed_content(
+                    model=model,
+                    contents=truncated_batch,
+                    config=types.EmbedContentConfig(
+                        output_dimensionality=embedding_dim,
+                        task_type='RETRIEVAL_DOCUMENT'
+                    )
+                )
+                
+                # Extract embeddings
+                for embedding in response.embeddings:
+                    all_embeddings.append(embedding.values)
+                
+                # Success - break out of retry loop
+                break
+                
+            except errors.APIError as e:
+                if e.code == 429:  # Rate limit error
+                    if attempt < max_retries - 1:
+                        # Exponential backoff with jitter
+                        wait_time = retry_delay * (2 ** attempt) + np.random.uniform(0, 1)
+                        print(f"Rate limit hit, waiting {wait_time:.2f} seconds before retry {attempt + 1}/{max_retries}")
+                        await asyncio.sleep(wait_time)
+                    else:
+                        raise  # Re-raise on final attempt
+                else:
+                    raise  # Re-raise non-rate-limit errors
+        
+        # Delay between batches to stay within rate limits
+        # With 100 requests/min limit, we need ~0.6 seconds between requests
+        if i + max_batch_size < len(texts):
+            await asyncio.sleep(1.0)  # Conservative delay
+    
+    return np.array(all_embeddings, dtype=np.float32)
 
 
 @retry(
