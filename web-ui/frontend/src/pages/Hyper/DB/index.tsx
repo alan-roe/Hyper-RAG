@@ -814,7 +814,7 @@ return;
                                         <Form.Item name="entity_type" label={t('database.entity_type')}>
                                             <Input disabled />
                                         </Form.Item>
-                                        <Form.Item name="description" label={t('database.description')}>
+                                        <Form.Item name="description" label={t('database.description_field')}>
                                             <TextArea rows={4} disabled />
                                         </Form.Item>
                                         <Form.Item name="additional_properties" label={t('database.additional_properties')}>
@@ -865,7 +865,7 @@ return;
                                     <Form.Item name="entity_type" label={t('database.entity_type')}>
                                         <Input placeholder={t('database.enter_entity_type')} disabled={modalType === 'view'} />
                                     </Form.Item>
-                                    <Form.Item name="description" label={t('database.description')}>
+                                    <Form.Item name="description" label={t('database.description_field')}>
                                         <TextArea
                                             rows={3}
                                             placeholder={t('database.enter_description')}

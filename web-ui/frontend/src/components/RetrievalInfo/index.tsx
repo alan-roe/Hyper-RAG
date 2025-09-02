@@ -44,7 +44,7 @@ const RetrievalInfo = ({
       <div className="text-sm">
         {entity.description && (
           <div className="mb-2">
-            <Text type="secondary">{t('retrieval.description')}: </Text>
+            <Text type="secondary">{t('retrieval.entity_description')}: </Text>
             <Paragraph
               ellipsis={{ rows: 2, expandable: true, symbol: t('retrieval.expand') }}
               className="mb-1"
@@ -101,7 +101,7 @@ const RetrievalInfo = ({
 
         {hyperedge.description && (
           <div className="mb-2">
-            <Text type="secondary">{t('retrieval.description')}: </Text>
+            <Text type="secondary">{t('retrieval.entity_description')}: </Text>
             <Paragraph
               ellipsis={{ rows: 2, expandable: true, symbol: t('retrieval.expand') }}
               className="mb-1"

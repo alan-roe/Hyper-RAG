@@ -233,7 +233,7 @@ const GraphPage = () => {
         >
           <p><strong>{t('graph.entity_name')}:</strong> {item.entity_name}</p>
           <p><strong>{t('graph.entity_type')}:</strong> <Tag color="blue">{item.entity_type}</Tag></p>
-          <p><strong>{t('graph.description')}:</strong></p>
+          <p><strong>{t('graph.entity_description')}:</strong></p>
           <ul>
             {item.descriptions.map((desc, idx) => (
               <li key={idx}>{desc}</li>

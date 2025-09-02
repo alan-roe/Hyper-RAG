@@ -83,6 +83,12 @@ const Setting: React.FC = () => {
       defaultBaseUrl: 'https://your-resource.openai.azure.com'
     },
     {
+      value: 'gemini',
+      label: 'Google Gemini',
+      models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
+      defaultBaseUrl: 'https://generativelanguage.googleapis.com'
+    },
+    {
       value: 'anthropic',
       label: 'Anthropic',
       models: ['claude-4-haiku', 'claude-4-sonnet', 'claude-4-opus'],
