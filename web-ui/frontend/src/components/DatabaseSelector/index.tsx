@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
-import { Select, Typography, Space, Button, message, Spin } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Select, Typography, Space, Button, message, Spin, Modal, Input, Form } from 'antd';
 import type { SizeType } from 'antd/es/config-provider/SizeContext';
 import { observer } from 'mobx-react';
-import { DatabaseOutlined, ReloadOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { storeGlobalUser } from '../../store/globalUser';
 import { useTranslation } from 'react-i18next';
+import { SERVER_URL } from '../../utils';
 
 const { Text } = Typography;
 const { Option } = Select;
@@ -42,6 +43,9 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
     disabled = false
 }) => {
     const { t } = useTranslation();
+    const [createModalVisible, setCreateModalVisible] = useState(false);
+    const [createForm] = Form.useForm();
+    const [creating, setCreating] = useState(false);
     
     // 如果没有提供placeholder，使用默认的国际化文本
     const defaultPlaceholder = placeholder || t('database.select_database_placeholder');
@@ -72,6 +76,41 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
         }
     };
 
+    // 创建新数据库
+    const handleCreateDatabase = async () => {
+        try {
+            const values = await createForm.validateFields();
+            setCreating(true);
+            
+            const response = await fetch(`${SERVER_URL}/create-database`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name: values.name }),
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                message.success(data.message);
+                setCreateModalVisible(false);
+                createForm.resetFields();
+                
+                // 刷新数据库列表并选择新创建的数据库
+                await storeGlobalUser.loadDatabases();
+                storeGlobalUser.setSelectedDatabase(data.database);
+                onChange?.(data.database);
+            } else {
+                message.error(data.message);
+            }
+        } catch (error) {
+            message.error(t('database.create_failed'));
+        } finally {
+            setCreating(false);
+        }
+    };
+
     // 选择器模式
     const renderSelectMode = () => (
         <Space size="middle" style={style}>
@@ -86,19 +125,30 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
                 dropdownRender={(menu) => (
                     <div>
                         {menu}
-                        {showRefresh && (
-                            <div style={{ padding: '8px', borderTop: '1px solid #f0f0f0' }}>
+                        <div style={{ padding: '8px', borderTop: '1px solid #f0f0f0' }}>
+                            <Space direction="vertical" style={{ width: '100%' }}>
                                 <Button
                                     type="text"
                                     size="small"
-                                    icon={<ReloadOutlined />}
-                                    onClick={handleRefresh}
+                                    icon={<PlusOutlined />}
+                                    onClick={() => setCreateModalVisible(true)}
                                     style={{ width: '100%' }}
                                 >
-                                    {t('database.refresh_list')}
+                                    {t('database.create_new')}
                                 </Button>
-                            </div>
-                        )}
+                                {showRefresh && (
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<ReloadOutlined />}
+                                        onClick={handleRefresh}
+                                        style={{ width: '100%' }}
+                                    >
+                                        {t('database.refresh_list')}
+                                    </Button>
+                                )}
+                            </Space>
+                        </div>
                     </div>
                 )}
             >
@@ -192,15 +242,52 @@ const DatabaseSelector: React.FC<DatabaseSelectorProps> = ({
     }
 
     // 根据模式渲染不同的UI
-    switch (mode) {
-        case 'buttons':
-            return renderButtonsMode();
-        case 'compact':
-            return renderCompactMode();
-        case 'select':
-        default:
-            return renderSelectMode();
-    }
+    const renderContent = () => {
+        switch (mode) {
+            case 'buttons':
+                return renderButtonsMode();
+            case 'compact':
+                return renderCompactMode();
+            case 'select':
+            default:
+                return renderSelectMode();
+        }
+    };
+
+    return (
+        <>
+            {renderContent()}
+            
+            <Modal
+                title={t('database.create_new')}
+                visible={createModalVisible}
+                onOk={handleCreateDatabase}
+                onCancel={() => {
+                    setCreateModalVisible(false);
+                    createForm.resetFields();
+                }}
+                confirmLoading={creating}
+                okText={t('common.create')}
+                cancelText={t('common.cancel')}
+            >
+                <Form form={createForm} layout="vertical">
+                    <Form.Item
+                        name="name"
+                        label={t('database.name')}
+                        rules={[
+                            { required: true, message: t('database.name_required') },
+                            { pattern: /^[a-zA-Z0-9_-]+$/, message: t('database.name_pattern') }
+                        ]}
+                    >
+                        <Input 
+                            placeholder={t('database.name_placeholder')}
+                            addonAfter=".hgdb"
+                        />
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </>
+    );
 };
 
 export default observer(DatabaseSelector);
