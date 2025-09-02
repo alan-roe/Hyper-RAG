@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import aiofiles
 import asyncio
+from translations import t
 
 class FileManager:
     def __init__(self, storage_dir: str = "uploads", metadata_file: str = "file_metadata.json"):
@@ -93,7 +94,7 @@ class FileManager:
             mime_type = mime_type_map.get(ext, 'application/octet-stream')
             
             if not self.is_supported_file(original_filename, mime_type):
-                raise ValueError(f"不支持的文件类型: {original_filename}")
+                raise ValueError(t('unsupported_file_type', filename=original_filename))
             
             # 生成数据库名
             database_name = self.generate_database_name(original_filename)
@@ -234,7 +235,7 @@ class FileManager:
         file_path = Path(file_path)
         
         if not file_path.exists():
-            raise FileNotFoundError(f"文件不存在: {file_path}")
+            raise FileNotFoundError(t('file_not_found', path=str(file_path)))
         
         # 根据文件类型选择不同的读取方式
         if file_path.suffix.lower() == '.pdf':
@@ -245,7 +246,7 @@ class FileManager:
             async with aiofiles.open(file_path, 'r', encoding='utf-8') as f:
                 return await f.read()
         else:
-            raise ValueError(f"不支持的文件类型: {file_path.suffix}")
+            raise ValueError(t('unsupported_file_type', filename=file_path.suffix))
     
     def _read_pdf(self, file_path: Path) -> str:
         """读取PDF文件内容"""
@@ -258,7 +259,7 @@ class FileManager:
                     text += page.extract_text() + "\n"
                 return text
         except Exception as e:
-            raise ValueError(f"PDF文件读取失败: {str(e)}")
+            raise ValueError(t('pdf_read_failed', error=str(e)))
     
     def _read_docx(self, file_path: Path) -> str:
         """读取DOCX文件内容"""
@@ -266,7 +267,7 @@ class FileManager:
             import docx2txt
             return docx2txt.process(str(file_path))
         except Exception as e:
-            raise ValueError(f"DOCX文件读取失败: {str(e)}")
+            raise ValueError(t('docx_read_failed', error=str(e)))
 
 # 全局文件管理器实例
 file_manager = FileManager() 

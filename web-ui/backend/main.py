@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSock
 from fastapi.middleware.cors import CORSMiddleware
 from db import get_hypergraph, getFrequentVertices, get_vertices, get_hyperedges, get_vertice, get_vertice_neighbor, get_hyperedge_neighbor_server, add_vertex, add_hyperedge, delete_vertex, delete_hyperedge, update_vertex, update_hyperedge, get_hyperedge_detail, db_manager
 from file_manager import file_manager
+from translations import t
 import json
 import os
 import asyncio
@@ -258,9 +259,11 @@ class SettingsModel(BaseModel):
     selectedDatabase: str = ""
     maxTokens: int = 2000
     temperature: float = 0.7
-    # HyperRAG 嵌入模型设置
+    # HyperRAG embedding model settings
     embeddingModel: str = "text-embedding-3-small"
     embeddingDim: int = 1536
+    # Language setting for backend
+    language: str = "en-US"  # en-US or zh-CN
 
 class APITestModel(BaseModel):
     apiKey: str
@@ -296,7 +299,8 @@ async def get_settings():
                 "maxTokens": 2000,
                 "temperature": 0.7,
                 "embeddingModel": "text-embedding-3-small",
-                "embeddingDim": 1536
+                "embeddingDim": 1536,
+                "language": "en-US"
             }
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -323,12 +327,12 @@ async def save_settings(settings: SettingsModel):
         
         with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
             json.dump(settings_dict, f, ensure_ascii=False, indent=2)
-        return {"success": True, "message": "设置保存成功"}
+        return {"success": True, "message": t('settings_save_success')}
     except Exception as e:
         return {"success": False, "message": str(e)}
 
 @app.get("/databases")
-async def get_databases():
+async def get_databases(lang: str = "en-US"):
     """
     获取可用数据库列表
     """
@@ -339,8 +343,9 @@ async def get_databases():
         database_files = db_manager.list_databases()
         
         for file in database_files:
-            # 根据文件名推断描述
-            description = f"{file.replace('.hgdb', '')}超图"
+            # Generate description based on language setting from translations
+            base_name = file.replace('.hgdb', '')
+            description = f"{base_name} {t('hypergraph_suffix')}"
             
             databases.append({
                 "name": file,
@@ -722,7 +727,7 @@ async def get_files():
         files = file_manager.get_all_files()
         return {"files": files}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=t('get_file_list_failed', error=str(e)))
 
 @app.post("/files/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
@@ -781,9 +786,9 @@ async def delete_file(file_id: str):
         if success:
             return {"success": True, "message": "文件删除成功"}
         else:
-            raise HTTPException(status_code=404, detail="文件不存在")
+            raise HTTPException(status_code=404, detail=t('file_not_exist'))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"文件删除失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=t('file_delete_failed', error=str(e)))
 
 @app.post("/files/embed")
 async def embed_files(request: FileEmbedRequest):
