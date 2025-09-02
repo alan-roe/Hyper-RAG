@@ -204,7 +204,10 @@
     "delete_failed": "文件删除失败",
     "all_completed": "所有文档嵌入完成",
     "processing_cancelled": "处理已取消",
-    "default_db": "default"
+    "default_db": "default",
+    "target_database": "目标数据库",
+    "select_target_database": "选择要嵌入的目标数据库",
+    "database_help_text": "选择要将文档处理到哪个数据库。文档将被添加到现有的超图中。"
   },
   "api": {
     "title": "API接口",

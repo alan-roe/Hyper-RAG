@@ -204,7 +204,10 @@
     "delete_failed": "File deletion failed",
     "all_completed": "All documents embedded successfully",
     "processing_cancelled": "Processing cancelled",
-    "default_db": "default"
+    "default_db": "default",
+    "target_database": "Target Database",
+    "select_target_database": "Select target database for embedding",
+    "database_help_text": "Select which database to process the documents into. Documents will be added to the existing hypergraph."
   },
   "api": {
     "title": "API Interface",
