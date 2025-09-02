@@ -859,6 +859,7 @@ class FileEmbedRequest(BaseModel):
     file_ids: List[str]
     chunk_size: int = 1000
     chunk_overlap: int = 200
+    database: str = None  # Add database parameter
 
 @app.get("/files")
 async def get_files():
@@ -1330,8 +1331,8 @@ async def process_files_with_progress(request: FileEmbedRequest, total_files: in
                 print(f"  - {t('file_size', size=file_info['file_size'])}")
                 print(f"  - {t('upload_time', time=file_info['upload_time'])}")
                 
-                # 使用文件对应的数据库名
-                database_name = file_info["database_name"]
+                # 使用请求中指定的数据库，如果没有则使用文件对应的数据库名
+                database_name = request.database if request.database else file_info.get("database_name", "default")
                 print(f"  - {t('target_database', database=database_name)}")
                 
                 main_logger.info(t('starting_file_processing', filename=file_info['filename'], size=file_info['file_size'], database=database_name))
