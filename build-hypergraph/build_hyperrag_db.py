@@ -73,17 +73,16 @@ class RateLimiter:
         # Check if we need to wait
         wait_time = 0
         
-        # Check requests per minute
-        if len(self.minute_requests) >= self.rpm_limit:
-            # Wait until the oldest request is older than 1 minute
-            wait_time = max(wait_time, 
-                          (self.minute_requests[0] + timedelta(minutes=1) - now).total_seconds())
+        # Check requests per minute (be conservative, start waiting at 80% capacity)
+        if len(self.minute_requests) >= self.rpm_limit * 0.8:
+            # Wait to avoid hitting the limit
+            wait_time = max(wait_time, 30)  # Wait 30 seconds when approaching limit
         
         # Check tokens per minute
         current_minute_tokens = sum(t[1] for t in self.minute_tokens)
-        if current_minute_tokens + token_count > self.tpm_limit:
+        if current_minute_tokens + token_count > self.tpm_limit * 0.8:  # Start waiting at 80% capacity
             # Wait until we have room for more tokens
-            wait_time = max(wait_time, 60)  # Wait a full minute to reset
+            wait_time = max(wait_time, 30)  # Wait 30 seconds when approaching limit
         
         # Check requests per day
         if len(self.day_requests) >= self.rpd_limit:
@@ -343,6 +342,23 @@ class FileProcessor:
         return files_to_process
 
 
+def get_model_rate_limits(model_name: str) -> Tuple[int, int, int]:
+    """Get rate limits for a specific Gemini model.
+    Returns: (rpm_limit, tpm_limit, rpd_limit)
+    """
+    # Model rate limits based on official Gemini documentation
+    rate_limits = {
+        # Generation models
+        "gemini-2.5-flash": (10, 250000, 250),
+        "gemini-2.5-flash-lite": (15, 250000, 1000),
+        
+        # Embedding models
+        "gemini-embedding-001": (100, 30000, 1000),
+    }
+    
+    # Default to most conservative limits if model not found
+    return rate_limits.get(model_name, (10, 30000, 250))
+
 class GeminiRAGBuilder:
     """Builds HyperRAG database using Google Gemini API with rate limiting"""
     
@@ -352,7 +368,7 @@ class GeminiRAGBuilder:
         use_vertex: bool = False,
         project_id: Optional[str] = None,
         location: str = 'us-central1',
-        generation_model: str = 'gemini-2.0-flash-exp',
+        generation_model: str = 'gemini-2.5-flash-lite',
         embedding_model: str = 'gemini-embedding-001',  # Updated to stable model
         embedding_dim: int = 768,  # OpenAI uses 1536 for text-embedding-3-small
         temperature: float = 0.1,
@@ -389,7 +405,7 @@ class GeminiRAGBuilder:
         
         # Retry configuration
         self.max_retries = 3
-        self.retry_delay = 1.0  # Initial delay in seconds
+        self.retry_delay = 30.0  # Initial delay in seconds (increased for Gemini rate limits)
         
         # Test connection
         self._test_connection()
@@ -421,7 +437,8 @@ class GeminiRAGBuilder:
         # Estimate token count (rough approximation)
         estimated_tokens = len(prompt.split()) * 1.3
         
-        for attempt in range(self.max_retries):
+        attempt = 0
+        while True:  # Infinite retry loop for rate limits
             try:
                 # Apply rate limiting
                 await self.rate_limiter.wait_if_needed(int(estimated_tokens))
@@ -445,9 +462,27 @@ class GeminiRAGBuilder:
                 return response.text
             
             except Exception as e:
-                if attempt < self.max_retries - 1:
-                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
-                    print(f"LLM generation error (attempt {attempt + 1}/{self.max_retries}): {e}")
+                error_str = str(e)
+                attempt += 1
+                
+                # Check if it's a rate limit error (429)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    # For rate limit errors, use exponential backoff with cap
+                    wait_time = min(self.retry_delay * (2 ** attempt), 300)  # Cap at 5 minutes
+                    print(f"LLM rate limit hit (attempt {attempt}): {e}")
+                    print(f"Waiting {wait_time:.1f} seconds before retry...")
+                    print("(Press Ctrl+C to cancel)")
+                    try:
+                        await asyncio.sleep(wait_time)
+                    except KeyboardInterrupt:
+                        print("\nLLM generation cancelled by user")
+                        raise
+                    continue  # Retry indefinitely for rate limits
+                
+                # For other errors, retry with limit
+                if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2 ** attempt)
+                    print(f"LLM generation error (attempt {attempt}/{self.max_retries}): {e}")
                     print(f"Retrying in {wait_time:.1f} seconds...")
                     await asyncio.sleep(wait_time)
                 else:
@@ -460,13 +495,14 @@ class GeminiRAGBuilder:
         # Estimate tokens and apply batching
         estimated_tokens = sum(len(text.split()) * 1.3 for text in texts)
         
-        for attempt in range(self.max_retries):
+        attempt = 0
+        while True: # Infinite retry loop
             try:
                 # Apply rate limiting
                 await self.rate_limiter.wait_if_needed(int(estimated_tokens))
                 
                 # Split texts into smaller batches if needed to avoid hitting TPM
-                max_batch_size = min(10, len(texts))  # Process max 10 texts at a time
+                max_batch_size = min(5, len(texts))  # Reduced batch size to avoid rate limits
                 
                 all_embeddings = []
                 for i in range(0, len(texts), max_batch_size):
@@ -494,21 +530,40 @@ class GeminiRAGBuilder:
                     for embedding in response.embeddings:
                         all_embeddings.append(embedding.values)
                     
-                    # Small delay between batches to avoid bursting
+                    # Add delay between batches to avoid rate limits
                     if i + max_batch_size < len(texts):
-                        await asyncio.sleep(0.5)
+                        await asyncio.sleep(5.0)  # Increased delay to prevent rate limiting
                 
                 return np.array(all_embeddings, dtype=np.float32)
             
             except Exception as e:
-                if attempt < self.max_retries - 1:
+                error_str = str(e)
+                attempt += 1
+                
+                # Check if it's a rate limit error (429)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    # For rate limit errors, use exponential backoff with cap
+                    wait_time = min(self.retry_delay * (2 ** attempt), 300)  # Cap at 5 minutes
+                    print(f"Rate limit hit (attempt {attempt}): {e}")
+                    print(f"Waiting {wait_time:.1f} seconds before retry...")
+                    print("(Press Ctrl+C to cancel)")
+                    try:
+                        await asyncio.sleep(wait_time)
+                    except KeyboardInterrupt:
+                        print("\nEmbedding generation cancelled by user")
+                        raise
+                    continue  # Retry indefinitely for rate limits
+                
+                # For other errors, retry with limit
+                if attempt < self.max_retries:
                     wait_time = self.retry_delay * (2 ** attempt)
-                    print(f"Embedding error (attempt {attempt + 1}/{self.max_retries}): {e}")
+                    print(f"Embedding error (attempt {attempt}/{self.max_retries}): {e}")
                     print(f"Retrying in {wait_time:.1f} seconds...")
                     await asyncio.sleep(wait_time)
                 else:
                     print(f"Embedding generation failed after {self.max_retries} attempts: {e}")
-                    # Return zero embeddings on error
+                    print("Returning zero embeddings - these will need to be reprocessed!")
+                    # Return zero embeddings on error (not ideal but better than crashing)
                     return np.zeros((len(texts), self.embedding_dim), dtype=np.float32)
     
     def build_database(
@@ -540,8 +595,9 @@ class GeminiRAGBuilder:
             # Match OpenAI settings for consistency, but adjust batching for rate limits
             chunk_token_size=1200,  # Same as OpenAI default
             chunk_overlap_token_size=100,  # Same as OpenAI default
-            embedding_batch_num=8,  # Reduced from 32 to respect Gemini rate limits
-            llm_model_max_async=3  # Conservative for Gemini rate limits (was 16 for OpenAI)
+            embedding_batch_num=1,  # Batch size for efficiency, will handle internally
+            llm_model_max_async=1,  # Process LLM requests one at a time
+            embedding_func_max_async=1  # Only one concurrent embedding request
         )
         
         # Process files in batches with progress tracking
@@ -686,7 +742,7 @@ def main():
     parser.add_argument(
         "--generation-model",
         type=str,
-        default="gemini-2.0-flash-exp",
+        default="gemini-2.5-flash-lite",
         help="Gemini model for text generation"
     )
     parser.add_argument(
@@ -790,6 +846,22 @@ def main():
     if args.use_vertex and not args.project_id:
         print("Error: Project ID required for Vertex AI. Set GOOGLE_CLOUD_PROJECT or use --project-id")
         sys.exit(1)
+    
+    # Auto-detect rate limits based on models if not specified
+    if args.rpm_limit == 100 and args.tpm_limit == 30000 and args.rpd_limit == 1000:
+        # Default values, auto-detect based on models
+        gen_rpm, gen_tpm, gen_rpd = get_model_rate_limits(args.generation_model)
+        emb_rpm, emb_tpm, emb_rpd = get_model_rate_limits(args.embedding_model)
+        
+        # Use the more restrictive limits
+        args.rpm_limit = min(gen_rpm, emb_rpm)
+        args.tpm_limit = min(gen_tpm, emb_tpm)
+        args.rpd_limit = min(gen_rpd, emb_rpd)
+        
+        print(f"\nAuto-detected rate limits for models:")
+        print(f"  Generation model ({args.generation_model}): {gen_rpm} RPM, {gen_tpm:,} TPM, {gen_rpd} RPD")
+        print(f"  Embedding model ({args.embedding_model}): {emb_rpm} RPM, {emb_tpm:,} TPM, {emb_rpd} RPD")
+        print(f"  Using conservative limits: {args.rpm_limit} RPM, {args.tpm_limit:,} TPM, {args.rpd_limit} RPD")
     
     # Process files
     print(f"Processing files from: {input_path}")
