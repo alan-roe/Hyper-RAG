@@ -1,0 +1,15 @@
+# Requirements for HyperRAG Database Builder
+# Install with: pip install -r requirements_builder.txt
+
+# Google Gemini API
+google-genai
+
+# HyperRAG dependencies (from main requirements.txt)
+nano-vectordb
+hypergraph-db
+tiktoken
+tenacity
+diskcache
+
+# Core dependencies
+numpy
