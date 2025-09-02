@@ -11,7 +11,7 @@ import logging
 import sys
 import importlib.util
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 from io import StringIO
 
@@ -54,6 +54,7 @@ async def root():
 @app.get("/db")
 async def db(database: str = None):
     """
+    Get complete hypergraph data in JSON format
     获取全部数据json
     """
     try:
@@ -65,6 +66,7 @@ async def db(database: str = None):
 @app.get("/db/vertices")
 async def get_vertices_function(database: str = None, page: int = None, page_size: int = None):
     """
+    Get list of vertices
     获取vertices列表
     """
     try:
@@ -76,6 +78,7 @@ async def get_vertices_function(database: str = None, page: int = None, page_siz
 @app.get("/db/hyperedges")
 async def get_hypergraph_function(database: str = None, page: int = None, page_size: int = None):
     """
+    Get list of hyperedges
     获取hyperedges列表
     """
     try:
@@ -87,6 +90,7 @@ async def get_hypergraph_function(database: str = None, page: int = None, page_s
 @app.get("/db/hyperedges/{hyperedge_id}")
 async def get_hyperedge(hyperedge_id: str, database: str = None):
     """
+    Get details of a specific hyperedge
     获取指定hyperedge的详情
     """
     try:
@@ -100,6 +104,7 @@ async def get_hyperedge(hyperedge_id: str, database: str = None):
 @app.get("/db/vertices/{vertex_id}")
 async def get_vertex(vertex_id: str, database: str = None):
     """
+    Get JSON data for a specific vertex
     获取指定vertex的json
     """
     vertex_id = vertex_id.replace("%20", " ")
@@ -112,6 +117,7 @@ async def get_vertex(vertex_id: str, database: str = None):
 @app.get("/db/vertices_neighbor/{vertex_id}")
 async def get_vertex_neighbor(vertex_id: str, database: str = None):
     """
+    Get neighbors of a specific vertex
     获取指定vertex的neighbor
     """
     vertex_id = vertex_id.replace("%20", " ")
@@ -124,6 +130,7 @@ async def get_vertex_neighbor(vertex_id: str, database: str = None):
 @app.get("/db/hyperedge_neighbor/{hyperedge_id}")
 async def get_hyperedge_neighbor(hyperedge_id: str, database: str = None):
     """
+    Get neighbors of a specific hyperedge
     获取指定hyperedge的neighbor
     """
     hyperedge_id = hyperedge_id.replace("%20", " ")
@@ -164,6 +171,7 @@ class HyperedgeUpdateModel(BaseModel):
 @app.post("/db/vertices")
 async def create_vertex(vertex: VertexModel):
     """
+    Create a new vertex
     创建新的vertex
     """
     try:
@@ -180,6 +188,7 @@ async def create_vertex(vertex: VertexModel):
 @app.post("/db/hyperedges")
 async def create_hyperedge(hyperedge: HyperedgeModel):
     """
+    Create a new hyperedge
     创建新的hyperedge
     """
     try:
@@ -194,6 +203,7 @@ async def create_hyperedge(hyperedge: HyperedgeModel):
 @app.put("/db/vertices/{vertex_id}")
 async def update_vertex_endpoint(vertex_id: str, vertex: VertexUpdateModel):
     """
+    Update vertex information
     更新vertex信息
     """
     try:
@@ -211,6 +221,7 @@ async def update_vertex_endpoint(vertex_id: str, vertex: VertexUpdateModel):
 @app.put("/db/hyperedges/{hyperedge_id}")
 async def update_hyperedge_endpoint(hyperedge_id: str, hyperedge: HyperedgeUpdateModel):
     """
+    Update hyperedge information
     更新hyperedge信息
     """
     try:
@@ -227,6 +238,7 @@ async def update_hyperedge_endpoint(hyperedge_id: str, hyperedge: HyperedgeUpdat
 @app.delete("/db/vertices/{vertex_id}")
 async def delete_vertex_endpoint(vertex_id: str, database: str = None):
     """
+    Delete a vertex
     删除vertex
     """
     try:
@@ -239,6 +251,7 @@ async def delete_vertex_endpoint(vertex_id: str, database: str = None):
 @app.delete("/db/hyperedges/{hyperedge_id}")
 async def delete_hyperedge_endpoint(hyperedge_id: str, database: str = None):
     """
+    Delete a hyperedge
     删除hyperedge
     """
     try:
@@ -277,6 +290,7 @@ class DatabaseTestModel(BaseModel):
 @app.get("/settings")
 async def get_settings():
     """
+    Get system settings
     获取系统设置
     """
     try:
@@ -308,6 +322,7 @@ async def get_settings():
 @app.post("/settings")
 async def save_settings(settings: SettingsModel):
     """
+    Save system settings
     保存系统设置
     """
     try:
@@ -334,6 +349,7 @@ async def save_settings(settings: SettingsModel):
 @app.get("/databases")
 async def get_databases(lang: str = "en-US"):
     """
+    Get list of available databases
     获取可用数据库列表
     """
     try:
@@ -360,16 +376,76 @@ async def get_databases(lang: str = "en-US"):
     except Exception as e:
         return {"success": False, "message": str(e), "data": []}
 
+class CreateDatabaseRequest(BaseModel):
+    """Request model for creating a new database"""
+    name: str = Field(..., description="Name of the database to create (without .hgdb extension)", example="my_knowledge_base")
+
+@app.post("/create-database")
+async def create_database(request: CreateDatabaseRequest):
+    """
+    Create a new empty database
+    创建新的空数据库
+    """
+    try:
+        database_name = request.name
+        if not database_name:
+            return {"success": False, "message": "Database name is required"}
+        
+        # Ensure it doesn't have .hgdb extension (we'll add it)
+        if database_name.endswith('.hgdb'):
+            database_name = database_name[:-5]
+        
+        # Check if database already exists
+        existing_databases = db_manager.list_databases()
+        if database_name in existing_databases:
+            return {"success": False, "message": f"Database '{database_name}' already exists"}
+        
+        # Create directory structure
+        database_dir = os.path.join(db_manager.cache_dir, database_name)
+        Path(database_dir).mkdir(parents=True, exist_ok=True)
+        
+        # Create empty .hgdb file path
+        database_path = os.path.join(database_dir, "hypergraph_chunk_entity_relation.hgdb")
+        
+        # Initialize empty HypergraphDB (it will create the file when saved)
+        from hyperdb import HypergraphDB
+        new_db = HypergraphDB(storage_file=database_path)
+        
+        # Save empty database to create the file
+        new_db.save(Path(database_path))
+        
+        main_logger.info(f"Created new database: {database_name}")
+        
+        return {
+            "success": True, 
+            "message": f"Database '{database_name}' created successfully",
+            "database": database_name
+        }
+    except Exception as e:
+        main_logger.error(f"Failed to create database: {str(e)}")
+        return {"success": False, "message": str(e)}
+
 @app.post("/test-api")
 async def test_api_connection(api_test: APITestModel):
     """
+    Test API connection
     测试API连接
     """
     try:
         from openai import OpenAI
         
         # 根据不同的模型提供商进行测试
-        if api_test.modelProvider == "openai":
+        if api_test.modelProvider == "gemini":
+            # Test Gemini API
+            from google import genai
+            client = genai.Client(api_key=api_test.apiKey)
+            # Simple test to check if API key is valid
+            response = client.models.generate_content(
+                model=api_test.modelName or "gemini-2.5-flash-lite",
+                contents="Hello, this is a test. Reply with 'API connection successful'."
+            )
+            return {"success": True, "message": "Gemini API connection successful"}
+        elif api_test.modelProvider == "openai":
             client = OpenAI(
                 api_key=api_test.apiKey,
                 base_url=api_test.baseUrl
@@ -398,6 +474,7 @@ async def test_api_connection(api_test: APITestModel):
 @app.post("/test-database")
 async def test_database_connection(db_test: DatabaseTestModel):
     """
+    Test database connection
     测试数据库连接
     """
     try:
@@ -428,6 +505,7 @@ hyperrag_working_dir = "hyperrag_cache"
 
 async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[], **kwargs) -> str:
     """
+    HyperRAG-specific LLM function, using async version
     HyperRAG 专用的 LLM 函数，使用异步版本
     """
     try:
@@ -439,21 +517,65 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
         with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
             settings = json.load(f)
         
-        model_name = settings.get("modelName", "gpt-5-mini")
+        model_name = settings.get("modelName", "gpt-4o-mini")
         api_key = settings.get("apiKey")
         base_url = settings.get("baseUrl")
+        model_provider = settings.get("modelProvider", "openai")
         
         main_logger.info(t('using_model', model=model_name, url=base_url))
         
-        response = await openai_complete_if_cache(
-            model_name,
-            prompt,
-            system_prompt=system_prompt,
-            history_messages=history_messages,
-            api_key=api_key,
-            base_url=base_url,
-            **kwargs,
-        )
+        if model_provider == "gemini":
+            # Use Gemini for text generation
+            from google import genai
+            from google.genai import types
+            
+            client = genai.Client(api_key=api_key)
+            
+            # Build conversation history using proper Content types
+            contents = []
+            
+            # Add system prompt as initial user/model exchange if provided
+            if system_prompt:
+                contents.append(types.Content(
+                    role='user',
+                    parts=[types.Part.from_text(text=system_prompt)]
+                ))
+                contents.append(types.Content(
+                    role='model', 
+                    parts=[types.Part.from_text(text="Understood. I'll follow these instructions.")]
+                ))
+            
+            # Add history messages
+            for msg in history_messages:
+                role = 'user' if msg.get("role") == "user" else 'model'
+                contents.append(types.Content(
+                    role=role,
+                    parts=[types.Part.from_text(text=msg.get("content", ""))]
+                ))
+            
+            # Add current prompt
+            contents.append(types.Content(
+                role='user',
+                parts=[types.Part.from_text(text=prompt)]
+            ))
+            
+            response_obj = client.models.generate_content(
+                model=model_name or "gemini-2.5-flash-lite",
+                contents=contents
+            )
+            
+            response = response_obj.text
+        else:
+            # Use OpenAI-compatible API
+            response = await openai_complete_if_cache(
+                model_name,
+                prompt,
+                system_prompt=system_prompt,
+                history_messages=history_messages,
+                api_key=api_key,
+                base_url=base_url,
+                **kwargs,
+            )
         
         main_logger.info(t('llm_call_complete', length=len(response)))
         return response
@@ -464,6 +586,7 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
 
 async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
     """
+    HyperRAG-specific embedding function
     HyperRAG 专用的嵌入函数
     """
     try:
@@ -477,15 +600,29 @@ async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
         embedding_model = settings.get("embeddingModel", "text-embedding-3-small")
         api_key = settings.get("apiKey")
         base_url = settings.get("baseUrl")
+        model_provider = settings.get("modelProvider", "openai")
+        embedding_dim = settings.get("embeddingDim", 768)
         
         main_logger.info(t('using_embedding_model', model=embedding_model))
         
-        embeddings = await openai_embedding(
-            texts,
-            model=embedding_model,
-            api_key=api_key,
-            base_url=base_url,
-        )
+        # Check model provider
+        if model_provider == "gemini":
+            # Use Gemini embeddings
+            from hyperrag.llm import gemini_embedding
+            embeddings = await gemini_embedding(
+                texts,
+                model=embedding_model,
+                api_key=api_key,
+                embedding_dim=embedding_dim
+            )
+        else:
+            # Use OpenAI embeddings (for openai, azure, custom, etc.)
+            embeddings = await openai_embedding(
+                texts,
+                model=embedding_model,
+                api_key=api_key,
+                base_url=base_url,
+            )
         
         main_logger.info(t('text_embedding_complete', dimensions=embeddings.shape))
         return embeddings
@@ -496,6 +633,7 @@ async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
 
 def get_or_create_hyperrag(database: str = None):
     """
+    Get or create HyperRAG instance for specified database
     获取或创建指定数据库的 HyperRAG 实例
     """
     global hyperrag_instances
@@ -576,6 +714,7 @@ class QueryModel(BaseModel):
 @app.post("/hyperrag/insert")
 async def insert_document(doc: DocumentModel):
     """
+    Insert document into specified database's HyperRAG
     向指定数据库的 HyperRAG 插入文档
     """
     if not HYPERRAG_AVAILABLE:
@@ -605,6 +744,7 @@ async def insert_document(doc: DocumentModel):
 @app.post("/hyperrag/query")
 async def query_hyperrag(query: QueryModel):
     """
+    Query HyperRAG using specified database for Q&A
     使用指定数据库的 HyperRAG 进行问答查询
     """
     if not HYPERRAG_AVAILABLE:
@@ -646,6 +786,7 @@ async def query_hyperrag(query: QueryModel):
 @app.get("/hyperrag/status")
 async def get_hyperrag_status(database: str = None):
     """
+    Get HyperRAG instance status for specified database
     获取指定数据库的 HyperRAG 实例状态
     """
     try:
@@ -685,6 +826,7 @@ async def get_hyperrag_status(database: str = None):
 @app.delete("/hyperrag/reset")
 async def reset_hyperrag(database: str = None):
     """
+    Reset HyperRAG instance for specified database, or reset all instances
     重置指定数据库的 HyperRAG 实例，或重置所有实例
     """
     global hyperrag_instances
@@ -721,6 +863,7 @@ class FileEmbedRequest(BaseModel):
 @app.get("/files")
 async def get_files():
     """
+    Get list of all uploaded files
     获取所有上传的文件列表
     """
     try:
@@ -732,6 +875,7 @@ async def get_files():
 @app.post("/files/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
     """
+    File upload interface
     上传文件接口
     """
     print(f"\n{'='*50}")
@@ -780,6 +924,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
 @app.delete("/files/{file_id}")
 async def delete_file(file_id: str):
     """
+    Delete specified file
     删除指定的文件
     """
     try:
@@ -794,6 +939,7 @@ async def delete_file(file_id: str):
 @app.post("/files/embed")
 async def embed_files(request: FileEmbedRequest):
     """
+    Batch embed documents into HyperRAG
     批量嵌入文档到HyperRAG
     """
     if not HYPERRAG_AVAILABLE:
@@ -950,7 +1096,7 @@ class ConnectionManager:
             self.disable_logging_redirect()
 
     def enable_logging_redirect(self):
-        """启用日志重定向"""
+        """Enable log redirection / 启用日志重定向"""
         if not self.logging_enabled:
             self.original_stdout = sys.stdout
             self.original_stderr = sys.stderr
@@ -963,7 +1109,7 @@ class ConnectionManager:
             print(t('log_redirect_enabled'))
 
     def disable_logging_redirect(self):
-        """禁用日志重定向"""
+        """Disable log redirection / 禁用日志重定向"""
         if self.logging_enabled and self.original_stdout and self.original_stderr:
             sys.stdout = self.original_stdout
             sys.stderr = self.original_stderr
@@ -987,12 +1133,12 @@ class ConnectionManager:
             self.disconnect(conn)
 
     async def send_progress_update(self, progress_data: dict):
-        """发送进度更新到所有连接的客户端"""
+        """Send progress updates to all connected clients / 发送进度更新到所有连接的客户端"""
         message = json.dumps(progress_data)
         await self.broadcast(message)
     
     async def send_log_message(self, log_data: dict):
-        """发送日志消息到所有连接的客户端"""
+        """Send log messages to all connected clients / 发送日志消息到所有连接的客户端"""
         message = json.dumps(log_data)
         await self.broadcast(message)
 
@@ -1000,7 +1146,7 @@ manager = ConnectionManager()
 
 # 设置全面的日志配置
 def setup_comprehensive_logging():
-    """设置全面的日志配置"""
+    """Setup comprehensive logging configuration / 设置全面的日志配置"""
     # 设置根日志记录器
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
@@ -1050,7 +1196,7 @@ def setup_comprehensive_logging():
     return root_logger
 
 def configure_hyperrag_logging():
-    """配置HyperRAG相关的详细日志输出"""
+    """Configure HyperRAG-related detailed log output / 配置HyperRAG相关的详细日志输出"""
     try:
         # 如果HyperRAG可用，配置其内部日志
         if HYPERRAG_AVAILABLE:
@@ -1106,6 +1252,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.post("/files/embed-with-progress")
 async def embed_files_with_progress(request: FileEmbedRequest):
     """
+    Batch embed documents into HyperRAG with real-time progress notifications
     批量嵌入文档到HyperRAG，带实时进度通知
     """
     if not HYPERRAG_AVAILABLE:
@@ -1124,7 +1271,7 @@ async def embed_files_with_progress(request: FileEmbedRequest):
     }
 
 async def process_files_with_progress(request: FileEmbedRequest, total_files: int):
-    """异步处理文件嵌入并发送进度更新"""
+    """Asynchronously process file embedding and send progress updates / 异步处理文件嵌入并发送进度更新"""
     try:
         print(f"="*60)
         print(t('batch_file_embed_start'))
