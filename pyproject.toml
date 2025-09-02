@@ -1,0 +1,26 @@
+[project]
+name = "hyper-rag"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=1.10.1",
+    "aioboto3>=15.1.0",
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.12.15",
+    "docx2txt>=0.9",
+    "fastapi[standard]>=0.116.1",
+    "hypergraph-db>=0.1.2",
+    "nano-vectordb>=0.0.4.3",
+    "numpy>=2.2.6",
+    "openai>=1.102.0",
+    "pydantic>=2.11.7",
+    "pypdf2>=3.0.1",
+    "python-multipart>=0.0.20",
+    "tenacity>=9.1.2",
+    "tiktoken>=0.11.0",
+    "uvicorn>=0.35.0",
+    "websockets>=15.0.1",
+    "xxhash>=3.5.0",
+]
