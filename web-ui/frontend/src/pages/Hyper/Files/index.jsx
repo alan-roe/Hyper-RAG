@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { observer } from 'mobx-react';
+import { storeGlobalUser } from '../../../store/globalUser';
+import DatabaseSelector from '../../../components/DatabaseSelector';
 
 // 服务器URL配置
 import { SERVER_URL } from '../../../utils/index'
@@ -20,6 +23,12 @@ const DocumentManager = () => {
   const fileInputRef = useRef(null);
   const wsRef = useRef(null);
   const logsEndRef = useRef(null);
+
+  // 初始化数据库
+  useEffect(() => {
+    storeGlobalUser.restoreSelectedDatabase();
+    storeGlobalUser.loadDatabases();
+  }, []);
 
   // 获取已上传的文件列表
   useEffect(() => {
@@ -274,7 +283,8 @@ return;
         body: JSON.stringify({
           file_ids: Array.from(selectedFiles),
           chunk_size: 1000,
-          chunk_overlap: 200
+          chunk_overlap: 200,
+          database: storeGlobalUser.selectedDatabase || 'default'
         }),
       });
 
@@ -341,6 +351,22 @@ return '0 Bytes';
             {notification.message}
           </div>
         )}
+
+        {/* 数据库选择器 */}
+        <div className="bg-white rounded-xl p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <div className="text-2xl font-semibold text-gray-900">{t('files.target_database')}</div>
+            <DatabaseSelector
+              mode="select"
+              size="middle"
+              placeholder={t('files.select_target_database')}
+              onChange={() => {}}
+            />
+          </div>
+          <p className="text-gray-500 mt-2 text-sm">
+            {t('files.database_help_text')}
+          </p>
+        </div>
 
         {/* 文件上传区域 */}
         <div className="bg-white rounded-xl p-6 mb-8">
@@ -618,5 +644,5 @@ return '0 Bytes';
   );
 };
 
-export default DocumentManager;
+export default observer(DocumentManager);
 
