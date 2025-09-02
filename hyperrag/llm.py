@@ -7,6 +7,9 @@ import aioboto3
 import aiohttp
 import httpx
 import numpy as np
+import time
+from collections import deque
+import threading
 
 from openai import (
     AsyncOpenAI,
@@ -33,11 +36,178 @@ from .utils import compute_args_hash, wrap_embedding_func_with_attrs
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
+class GeminiRateLimiter:
+    """Thread-safe rate limiter for Gemini API with configurable limits"""
+    
+    LIMITS = {
+        'text-embedding-004': {'rpm': 50, 'tpm': 30000},
+        'gemini-embedding-001': {'rpm': 50, 'tpm': 30000},
+        'gemini-2.0-flash-exp': {'rpm': 10, 'tpm': 250000},
+        'gemini-2.5-flash': {'rpm': 10, 'tpm': 250000}
+    }
+    
+    def __init__(self, model: str = 'gemini-embedding-001'):
+        limits = self.LIMITS.get(model, {'rpm': 100, 'tpm': 30000})
+        # Use more conservative limits to avoid hitting rate limits
+        self.rpm_limit = int(limits['rpm'] * 0.8)  # Use 80% of limit
+        self.tpm_limit = int(limits['tpm'] * 0.8)  # Use 80% of limit
+        self.request_times = deque()
+        self.token_counts = deque()
+        self._lock = asyncio.Lock()
+    
+    def get_usage_stats(self):
+        """Get current usage statistics for debugging"""
+        now = time.time()
+        # Clean old entries
+        valid_times = [t for t in self.request_times if t > now - 60]
+        valid_tokens = [self.token_counts[i] for i, t in enumerate(self.request_times) if t > now - 60]
+        
+        return {
+            'requests_last_minute': len(valid_times),
+            'tokens_last_minute': sum(valid_tokens),
+            'rpm_limit': self.rpm_limit,
+            'tpm_limit': self.tpm_limit,
+            'rpm_usage_percent': (len(valid_times) / self.rpm_limit * 100) if self.rpm_limit > 0 else 0,
+            'tpm_usage_percent': (sum(valid_tokens) / self.tpm_limit * 100) if self.tpm_limit > 0 else 0
+        }
+    
+    async def wait_if_needed(self, estimated_tokens: int):
+        """Wait if rate limits would be exceeded - thread-safe"""
+        async with self._lock:
+            now = time.time()
+            
+            # Clean old entries (older than 60 seconds)
+            while self.request_times and self.request_times[0] < now - 60:
+                self.request_times.popleft()
+                self.token_counts.popleft()
+            
+            current_requests = len(self.request_times)
+            current_tokens = sum(self.token_counts)
+            
+            # Debug logging - show current usage
+            print(f"[Rate Limiter Debug] Current usage: {current_requests}/{self.rpm_limit} RPM, {current_tokens}/{self.tpm_limit} TPM, New request: {estimated_tokens} tokens")
+            
+            # Check if we need to wait for RPM limit
+            if current_requests >= self.rpm_limit:
+                wait_time = 60 - (now - self.request_times[0])
+                if wait_time > 0:
+                    print(f"[Rate Limiter] RPM limit reached ({current_requests}/{self.rpm_limit}), waiting {wait_time:.1f}s")
+                    await asyncio.sleep(wait_time + 0.1)
+                    now = time.time()  # Update now after waiting
+            
+            # Check if we need to wait for TPM limit
+            total_tokens = current_tokens + estimated_tokens
+            if total_tokens > self.tpm_limit:
+                wait_time = 60 - (now - self.request_times[0])
+                if wait_time > 0:
+                    print(f"[Rate Limiter] TPM limit would be exceeded ({total_tokens}/{self.tpm_limit}), waiting {wait_time:.1f}s")
+                    await asyncio.sleep(wait_time + 0.1)
+                    now = time.time()  # Update now after waiting
+            
+            # Record this request
+            self.request_times.append(now)
+            self.token_counts.append(estimated_tokens)
+
+
+# Module-level rate limiter instances (one per model to avoid conflicts)
+_gemini_rate_limiters = {}
+_rate_limiter_lock = threading.Lock()
+
+def get_gemini_rate_limiter(model: str):
+    """Get or create the singleton rate limiter for the given model - thread-safe"""
+    global _gemini_rate_limiters
+    
+    with _rate_limiter_lock:
+        if model not in _gemini_rate_limiters:
+            _gemini_rate_limiters[model] = GeminiRateLimiter(model)
+        return _gemini_rate_limiters[model]
+
+
+class RetryableGeminiClient:
+    """Wrapper for Gemini client that automatically rotates API keys on rate limit errors"""
+    
+    def __init__(self, api_keys):
+        """
+        Initialize with one or more API keys
+        
+        Args:
+            api_keys: Single API key string or list of API key strings
+        """
+        # Ensure api_keys is a list
+        if isinstance(api_keys, str):
+            self.api_keys = [api_keys]
+        elif isinstance(api_keys, list):
+            self.api_keys = api_keys
+        else:
+            self.api_keys = [str(api_keys)]  # Convert to string if needed
+            
+        # Filter out None/empty values
+        self.api_keys = [k for k in self.api_keys if k]
+        
+        if not self.api_keys:
+            raise ValueError("At least one valid API key is required")
+            
+        self.current_key_index = 0
+        self._create_client()
+    
+    def _create_client(self):
+        """Create a new genai client with the current API key"""
+        from google import genai
+        self.client = genai.Client(api_key=self.api_keys[self.current_key_index])
+        
+    def _rotate_key(self):
+        """Rotate to the next API key and create a new client"""
+        self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+        self._create_client()
+        
+    def embed_content(self, **kwargs):
+        """
+        Call embed_content with automatic API key rotation on rate limit
+        
+        Returns the result from the first successful API key, or raises
+        the exception if all keys are exhausted
+        """
+        last_exception = None
+        keys_tried = 0
+        
+        while keys_tried < len(self.api_keys):
+            try:
+                # Try with current API key
+                return self.client.models.embed_content(**kwargs)
+                
+            except Exception as e:
+                error_str = str(e)
+                
+                # Check if this is a rate limit error
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "rate limit" in error_str.lower():
+                    last_exception = e
+                    keys_tried += 1
+                    
+                    # If we have more keys to try, rotate
+                    if keys_tried < len(self.api_keys):
+                        print(f"[RetryableGeminiClient] Rate limit hit on API key {self.current_key_index + 1}/{len(self.api_keys)}, rotating to next key...")
+                        self._rotate_key()
+                        continue
+                    else:
+                        # All keys exhausted
+                        print(f"[RetryableGeminiClient] All {len(self.api_keys)} API keys hit rate limits")
+                        raise last_exception
+                else:
+                    # Not a rate limit error, raise immediately
+                    raise
+        
+        # This should not be reached, but just in case
+        if last_exception:
+            raise last_exception
+        else:
+            raise RuntimeError("Unexpected state in RetryableGeminiClient")
+
+
 async def gemini_embedding(
     texts: list[str],
     model: str = "gemini-embedding-001",
-    api_key: str = None,
-    embedding_dim: int = 768,
+    api_key = None,  # Can be string or list of strings
+    embedding_dim: int = 1536,
     **kwargs
 ) -> np.ndarray:
     """
@@ -46,7 +216,7 @@ async def gemini_embedding(
     Args:
         texts: List of texts to embed
         model: Gemini embedding model name
-        api_key: Gemini API key
+        api_key: Gemini API key (string) or list of API keys for rotation
         embedding_dim: Output embedding dimension
     
     Returns:
@@ -55,19 +225,29 @@ async def gemini_embedding(
     try:
         from google import genai
         from google.genai import types
-        from google.genai import errors
     except ImportError:
         raise ImportError("Please install google-genai: pip install google-genai")
     
+    # Handle both single key and multiple keys
     if api_key:
-        os.environ["GOOGLE_API_KEY"] = api_key
+        # api_key provided directly (could be string or list)
+        api_keys = api_key
+    else:
+        # Fall back to environment variable
+        env_key = os.environ.get("GOOGLE_API_KEY")
+        if env_key:
+            api_keys = env_key
+        else:
+            raise ValueError("No API key provided and GOOGLE_API_KEY environment variable not set")
     
-    # Use default client configuration - HttpOptions seem to be causing timeout issues
-    client = genai.Client(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
+    # Create the retryable client with automatic key rotation
+    client = RetryableGeminiClient(api_keys)
     
-    # Process in smaller batches to avoid rate limits
-    # Gemini has limits: 100 requests/min, 30000 tokens/min, 1000 requests/day
-    max_batch_size = 2  # Reduced batch size to avoid rate limits
+    # Get rate limiter for this model
+    rate_limiter = get_gemini_rate_limiter(model)
+    
+    # Process in batches with rate limiting
+    max_batch_size = 2  # Conservative batch size to avoid rate limits
     all_embeddings = []
     
     for i in range(0, len(texts), max_batch_size):
@@ -81,11 +261,17 @@ async def gemini_embedding(
             words = text.split()[:max_words]
             truncated_batch.append(' '.join(words))
         
-        # Generate embeddings for batch with proper rate limit handling
-        max_retries = 3
-        for attempt in range(max_retries):
+        # Estimate tokens for rate limiting (1.3 tokens per word average)
+        estimated_tokens = sum(len(text.split()) * 1.3 for text in truncated_batch)
+        
+        # Wait if rate limits would be exceeded
+        await rate_limiter.wait_if_needed(int(estimated_tokens))
+        
+        # Generate embeddings for batch with infinite retry for rate limits and overload
+        attempt = 0
+        while True:
             try:
-                response = client.models.embed_content(
+                response = client.embed_content(
                     model=model,
                     contents=truncated_batch,
                     config=types.EmbedContentConfig(
@@ -102,24 +288,60 @@ async def gemini_embedding(
             except Exception as e:
                 error_str = str(e)
                 
-                # Handle rate limit errors (429) with 60-second wait
+                # Handle rate limit errors (429) - Only reached if ALL API keys are exhausted
                 if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "rate limit" in error_str.lower():
-                    if attempt < max_retries - 1:
-                        print(f"Rate limit hit (429), waiting 60 seconds before retry {attempt + 1}/{max_retries}")
-                        await asyncio.sleep(60.0)  # Wait exactly 60 seconds for rate limit reset
-                        continue
+                    # Log current rate limiter state for debugging
+                    stats = rate_limiter.get_usage_stats()
+                    print(f"\n[429 ERROR] All API keys exhausted! Full request details:")
+                    print(f"  - Batch size: {len(truncated_batch)} texts")
+                    print(f"  - Estimated tokens for this batch: ~{estimated_tokens:.1f} tokens")
+                    
+                    # Show sample of actual text content (first text, truncated if needed)
+                    if truncated_batch:
+                        sample_text = truncated_batch[0]
+                        if len(sample_text) > 200:
+                            sample_text = sample_text[:200] + "..."
+                        print(f"  - First text in batch (truncated): \"{sample_text}\"")
+                        
+                        # Show length statistics for all texts in batch
+                        text_lengths = [len(text) for text in truncated_batch]
+                        print(f"  - Text lengths in batch: {text_lengths}")
+                        print(f"  - Total characters: {sum(text_lengths)}")
+                        print(f"  - Average chars per text: {sum(text_lengths)/len(text_lengths):.1f}")
+                    
+                    print(f"\n  Current rate limiter state:")
+                    print(f"  - Requests in last minute: {stats['requests_last_minute']}/{stats['rpm_limit']} ({stats['rpm_usage_percent']:.1f}%)")
+                    print(f"  - Tokens in last minute: {stats['tokens_last_minute']}/{stats['tpm_limit']} ({stats['tpm_usage_percent']:.1f}%)")
+                    
+                    # Determine which limit was likely hit
+                    if stats['rpm_usage_percent'] > stats['tpm_usage_percent']:
+                        print(f"  → Likely hit RPM limit (requests per minute)")
                     else:
-                        print(f"Rate limit exceeded after {max_retries} attempts")
-                        raise
+                        print(f"  → Likely hit TPM limit (tokens per minute)")
+                    
+                    # Show the actual error message from API
+                    print(f"\n  API Error: {error_str[:500]}")  # Truncate very long errors
+                    
+                    # Wait 60 seconds for rate limit window to reset, with small additional buffer
+                    wait_time = 60 + (attempt * 5)  # 60s, 65s, 70s, etc.
+                    print(f"\n[429 ERROR] All keys exhausted, waiting {wait_time}s for rate limit reset (attempt {attempt + 1})")
+                    await asyncio.sleep(wait_time)
+                    attempt += 1
+                    continue
+                    
+                # Handle 503 Service Unavailable / Model Overloaded errors
+                elif "503" in error_str or "UNAVAILABLE" in error_str or "overloaded" in error_str.lower():
+                    # Exponential backoff for overload: start at 30s (5*6), double each time, cap at 1800s (30 min)
+                    wait_time = min(30 * (2 ** attempt), 1800)
+                    print(f"Model overloaded (503), waiting {wait_time}s before retry (attempt {attempt + 1})")
+                    await asyncio.sleep(wait_time)
+                    attempt += 1
+                    continue
+                    
                 else:
-                    # For other errors, let the SDK's retry logic handle it, or fail
+                    # For other errors, fail immediately
                     print(f"Error generating embeddings for batch: {e}")
                     raise
-        
-        # Delay between batches to stay within rate limits
-        # With 100 requests/min limit, we need ~0.6 seconds between requests
-        if i + max_batch_size < len(texts):
-            await asyncio.sleep(1.0)  # Conservative delay
     
     return np.array(all_embeddings, dtype=np.float32)
 
