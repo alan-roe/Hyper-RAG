@@ -519,6 +519,11 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
         
         model_name = settings.get("modelName", "gpt-4o-mini")
         api_key = settings.get("apiKey")
+        # If api_key is a list (for rotation), use the first one for LLM calls
+        if isinstance(api_key, list) and api_key:
+            llm_api_key = api_key[0]
+        else:
+            llm_api_key = api_key
         base_url = settings.get("baseUrl")
         model_provider = settings.get("modelProvider", "openai")
         
@@ -529,7 +534,7 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
             from google import genai
             from google.genai import types
             
-            client = genai.Client(api_key=api_key)
+            client = genai.Client(api_key=llm_api_key)
             
             # Build conversation history using proper Content types
             contents = []
@@ -559,12 +564,33 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
                 parts=[types.Part.from_text(text=prompt)]
             ))
             
-            response_obj = client.models.generate_content(
-                model=model_name or "gemini-2.5-flash-lite",
-                contents=contents
-            )
+            # Retry logic for 503 errors
+            max_retries = 100
+            retry_delay = 30  # seconds (increased by factor of 6)
             
-            response = response_obj.text
+            for attempt in range(max_retries):
+                try:
+                    response_obj = client.models.generate_content(
+                        model=model_name or "gemini-2.5-flash-lite",
+                        contents=contents
+                    )
+                    response = response_obj.text
+                    break  # Success, exit retry loop
+                    
+                except Exception as e:
+                    error_str = str(e)
+                    if "503" in error_str or "overloaded" in error_str.lower() or "UNAVAILABLE" in error_str:
+                        if attempt < max_retries - 1:
+                            main_logger.info(f"Model overloaded (503), retrying in {retry_delay}s (attempt {attempt + 2}/{max_retries})")
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2  # Exponential backoff
+                            continue
+                        else:
+                            main_logger.error(f"Max retries reached for 503 error")
+                            raise
+                    else:
+                        # Not a 503 error, raise immediately
+                        raise
         else:
             # Use OpenAI-compatible API
             response = await openai_complete_if_cache(
@@ -572,7 +598,7 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
                 prompt,
                 system_prompt=system_prompt,
                 history_messages=history_messages,
-                api_key=api_key,
+                api_key=llm_api_key,
                 base_url=base_url,
                 **kwargs,
             )
@@ -617,10 +643,12 @@ async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
             )
         else:
             # Use OpenAI embeddings (for openai, azure, custom, etc.)
+            # If api_key is a list, use the first one (OpenAI doesn't support rotation yet)
+            embedding_api_key = api_key[0] if isinstance(api_key, list) and api_key else api_key
             embeddings = await openai_embedding(
                 texts,
                 model=embedding_model,
-                api_key=api_key,
+                api_key=embedding_api_key,
                 base_url=base_url,
             )
         
