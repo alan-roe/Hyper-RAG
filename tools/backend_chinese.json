@@ -1,0 +1,1697 @@
+{
+  "summary": {
+    "total_files": 7,
+    "needs_localization": 117,
+    "possibly_localized": 60,
+    "in_comments": 224
+  },
+  "needs_localization": [
+    {
+      "text": "获取指定",
+      "occurrences": 10,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 131,
+          "context": "获取指定vertex的json"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 181,
+          "context": "获取指定hyperedge的json"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 190,
+          "context": "获取指定hyperedge的详细信息"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 210,
+          "context": "获取指定vertex的neighbor"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 230,
+          "context": "获取指定vertex的neighbor"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 260,
+          "context": "获取指定hyperedge的neighbor"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 90,
+          "context": "获取指定hyperedge的详情"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 103,
+          "context": "获取指定vertex的json"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 115,
+          "context": "获取指定vertex的neighbor"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 127,
+          "context": "获取指定hyperedge的neighbor"
+        }
+      ]
+    },
+    {
+      "text": "测试",
+      "occurrences": 10,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 90,
+          "context": "\"\"\"测试HyperRAG查询\"\"\""
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 91,
+          "context": "print(\"\\n=== 测试HyperRAG查询 ===\")"
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 13,
+          "context": "\"\"\"测试WebSocket日志功能\"\"\""
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 14,
+          "context": "print(\"=== 测试WebSocket日志功能 ===\")"
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 20,
+          "context": "\"\"\"测试 HyperRAG 状态\"\"\""
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 21,
+          "context": "print(\"=== 测试 HyperRAG 状态 ===\")"
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 47,
+          "context": "print(f\"=== 测试 HyperRAG 查询 ({mode}) ===\")"
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 118,
+          "context": "# 测试 hyper 模式"
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 121,
+          "context": "# 测试 naive 模式"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 366,
+          "context": "测试API连接"
+        }
+      ]
+    },
+    {
+      "text": "的",
+      "occurrences": 9,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 131,
+          "context": "获取指定vertex的json"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 181,
+          "context": "获取指定hyperedge的json"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 210,
+          "context": "获取指定vertex的neighbor"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 230,
+          "context": "获取指定vertex的neighbor"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 252,
+          "context": "# data的 keywords 赋值"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 260,
+          "context": "获取指定hyperedge的neighbor"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 103,
+          "context": "获取指定vertex的json"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 115,
+          "context": "获取指定vertex的neighbor"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 127,
+          "context": "获取指定hyperedge的neighbor"
+        }
+      ]
+    },
+    {
+      "text": "删除",
+      "occurrences": 6,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 400,
+          "context": "删除vertex"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 408,
+          "context": "# 删除vertex"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 423,
+          "context": "删除hyperedge"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 434,
+          "context": "# 删除hyperedge"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 230,
+          "context": "删除vertex"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 242,
+          "context": "删除hyperedge"
+        }
+      ]
+    },
+    {
+      "text": "获取",
+      "occurrences": 5,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 67,
+          "context": "获取vertices列表"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 139,
+          "context": "获取hyperedges列表（包含详细信息）"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 201,
+          "context": "# 获取hyperedge数据"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 68,
+          "context": "获取vertices列表"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 79,
+          "context": "获取hyperedges列表"
+        }
+      ]
+    },
+    {
+      "text": "列表",
+      "occurrences": 5,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 67,
+          "context": "获取vertices列表"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 94,
+          "context": "获取有边的vertices列表，支持分页"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 139,
+          "context": "获取hyperedges列表（包含详细信息）"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 68,
+          "context": "获取vertices列表"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 79,
+          "context": "获取hyperedges列表"
+        }
+      ]
+    },
+    {
+      "text": "更新",
+      "occurrences": 4,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 333,
+          "context": "更新vertex信息"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 365,
+          "context": "更新hyperedge信息"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 197,
+          "context": "更新vertex信息"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 214,
+          "context": "更新hyperedge信息"
+        }
+      ]
+    },
+    {
+      "text": "信息",
+      "occurrences": 4,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 333,
+          "context": "更新vertex信息"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 365,
+          "context": "更新hyperedge信息"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 197,
+          "context": "更新vertex信息"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 214,
+          "context": "更新hyperedge信息"
+        }
+      ]
+    },
+    {
+      "text": "日志功能",
+      "occurrences": 4,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 13,
+          "context": "\"\"\"测试WebSocket日志功能\"\"\""
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 14,
+          "context": "print(\"=== 测试WebSocket日志功能 ===\")"
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 23,
+          "context": "这是一个测试文档，用于验证WebSocket日志功能。"
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 148,
+          "context": "print(\"开始测试WebSocket日志功能...\")"
+        }
+      ]
+    },
+    {
+      "text": "测试文档",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 32,
+          "context": "(\"测试文档.pdf\", \"测试文档\"),"
+        },
+        {
+          "file": "backend/test_database_name.py",
+          "line": 32,
+          "context": "(\"测试文档.pdf\", \"测试文档\"),"
+        },
+        {
+          "file": "backend/test_database_name.py",
+          "line": 63,
+          "context": "(\"测试文档.txt\", \"这是一个中文测试文档。\"),"
+        }
+      ]
+    },
+    {
+      "text": "测试文件上传",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 10,
+          "context": "\"\"\"测试文件上传\"\"\""
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 11,
+          "context": "print(\"=== 测试文件上传 ===\")"
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 107,
+          "context": "# 1. 测试文件上传"
+        }
+      ]
+    },
+    {
+      "text": "测试获取文件列表",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 58,
+          "context": "\"\"\"测试获取文件列表\"\"\""
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 59,
+          "context": "print(\"\\n=== 测试获取文件列表 ===\")"
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 115,
+          "context": "# 2. 测试获取文件列表"
+        }
+      ]
+    },
+    {
+      "text": "测试文件嵌入",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 68,
+          "context": "\"\"\"测试文件嵌入\"\"\""
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 69,
+          "context": "print(\"\\n=== 测试文件嵌入 ===\")"
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 118,
+          "context": "# 3. 测试文件嵌入（异步处理）"
+        }
+      ]
+    },
+    {
+      "text": "测试文件删除",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 82,
+          "context": "\"\"\"测试文件删除\"\"\""
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 83,
+          "context": "print(f\"\\n=== 测试文件删除 (ID: {file_id}) ===\")"
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 131,
+          "context": "# 6. 测试文件删除"
+        }
+      ]
+    },
+    {
+      "text": "查询",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 90,
+          "context": "\"\"\"测试HyperRAG查询\"\"\""
+        },
+        {
+          "file": "backend/test_file_api.py",
+          "line": 91,
+          "context": "print(\"\\n=== 测试HyperRAG查询 ===\")"
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 47,
+          "context": "print(f\"=== 测试 HyperRAG 查询 ({mode}) ===\")"
+        }
+      ]
+    },
+    {
+      "text": "接口",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 5,
+          "context": "这个脚本演示如何使用 HyperRAG 问答 API 接口。"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 252,
+          "context": "# 设置相关的API接口"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 714,
+          "context": "# 文件管理相关的API接口"
+        }
+      ]
+    },
+    {
+      "text": "测试文档插入",
+      "occurrences": 3,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 28,
+          "context": "\"\"\"测试文档插入\"\"\""
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 29,
+          "context": "print(\"=== 测试文档插入 ===\")"
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 105,
+          "context": "# 测试文档插入"
+        }
+      ]
+    },
+    {
+      "text": "查不到会报错",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 212,
+          "context": "todo: 查不到会报错 CLERGYMAN"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 232,
+          "context": "todo: 查不到会报错 CLERGYMAN"
+        }
+      ]
+    },
+    {
+      "text": "添加新的",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 279,
+          "context": "添加新的vertex"
+        },
+        {
+          "file": "backend/db.py",
+          "line": 302,
+          "context": "添加新的hyperedge"
+        }
+      ]
+    },
+    {
+      "text": "用户手册",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 37,
+          "context": "(\"用户手册V1.0.md\", \"用户手册\"),"
+        },
+        {
+          "file": "backend/test_database_name.py",
+          "line": 37,
+          "context": "(\"用户手册V1.0.md\", \"用户手册\"),"
+        }
+      ]
+    },
+    {
+      "text": "✓",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 51,
+          "context": "status = \"✓\" if actual_db_name == expected_db_name else \"✗\""
+        },
+        {
+          "file": "backend/test_database_name.py",
+          "line": 73,
+          "context": "print(f\"✓ 上传成功: {filename}\")"
+        }
+      ]
+    },
+    {
+      "text": "✗",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 51,
+          "context": "status = \"✓\" if actual_db_name == expected_db_name else \"✗\""
+        },
+        {
+          "file": "backend/test_database_name.py",
+          "line": 80,
+          "context": "print(f\"✗ 上传失败: {filename} - {str(e)}\")"
+        }
+      ]
+    },
+    {
+      "text": "这是一个测试文档",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 15,
+          "context": "这是一个测试文档，用于验证文件上传和解析功能。"
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 23,
+          "context": "这是一个测试文档，用于验证WebSocket日志功能。"
+        }
+      ]
+    },
+    {
+      "text": "文档嵌入测试",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 24,
+          "context": "2. 文档嵌入测试"
+        },
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 33,
+          "context": "3. 文档嵌入测试"
+        }
+      ]
+    },
+    {
+      "text": "测试设置接口",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 75,
+          "context": "\"\"\"测试设置接口\"\"\""
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 76,
+          "context": "print(\"=== 测试设置接口 ===\")"
+        }
+      ]
+    },
+    {
+      "text": "测试获取可用数据库列表",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 83,
+          "context": "\"\"\"测试获取可用数据库列表\"\"\""
+        },
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 84,
+          "context": "print(\"=== 测试获取可用数据库列表 ===\")"
+        }
+      ]
+    },
+    {
+      "text": "创建新的",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 167,
+          "context": "创建新的vertex"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 183,
+          "context": "创建新的hyperedge"
+        }
+      ]
+    },
+    {
+      "text": "测试数据库连接",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 401,
+          "context": "测试数据库连接"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 404,
+          "context": "# 使用db_manager测试数据库连接"
+        }
+      ]
+    },
+    {
+      "text": "批量嵌入文档到",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 797,
+          "context": "批量嵌入文档到HyperRAG"
+        },
+        {
+          "file": "backend/main.py",
+          "line": 1109,
+          "context": "批量嵌入文档到HyperRAG，带实时进度通知"
+        }
+      ]
+    },
+    {
+      "text": "配置",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 1053,
+          "context": "\"\"\"配置HyperRAG相关的详细日志输出\"\"\""
+        },
+        {
+          "file": "backend/main.py",
+          "line": 1091,
+          "context": "# 配置HyperRAG日志"
+        }
+      ]
+    },
+    {
+      "text": "删除文件",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 214,
+          "context": "\"\"\"删除文件\"\"\""
+        },
+        {
+          "file": "backend/file_manager.py",
+          "line": 222,
+          "context": "# 删除文件"
+        }
+      ]
+    },
+    {
+      "text": "读取",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 252,
+          "context": "\"\"\"读取PDF文件内容\"\"\""
+        },
+        {
+          "file": "backend/file_manager.py",
+          "line": 265,
+          "context": "\"\"\"读取DOCX文件内容\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "文件内容",
+      "occurrences": 2,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 252,
+          "context": "\"\"\"读取PDF文件内容\"\"\""
+        },
+        {
+          "file": "backend/file_manager.py",
+          "line": 265,
+          "context": "\"\"\"读取DOCX文件内容\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "数据库管理器",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 5,
+          "context": "\"\"\"数据库管理器，支持多个数据库实例\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "支持多个数据库实例",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 5,
+          "context": "\"\"\"数据库管理器，支持多个数据库实例\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "获取数据库实例",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 11,
+          "context": "\"\"\"获取数据库实例\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "列出",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 29,
+          "context": "\"\"\"列出hyperrag_cache目录下所有可用的数据库文件\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "目录下所有可用的数据库文件",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 29,
+          "context": "\"\"\"列出hyperrag_cache目录下所有可用的数据库文件\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "获取有边的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 94,
+          "context": "获取有边的vertices列表，支持分页"
+        }
+      ]
+    },
+    {
+      "text": "支持分页",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 94,
+          "context": "获取有边的vertices列表，支持分页"
+        }
+      ]
+    },
+    {
+      "text": "包含详细信息",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 139,
+          "context": "获取hyperedges列表（包含详细信息）"
+        }
+      ]
+    },
+    {
+      "text": "的详细信息",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 190,
+          "context": "获取指定hyperedge的详细信息"
+        }
+      ]
+    },
+    {
+      "text": "获取所有详情",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/db.py",
+          "line": 241,
+          "context": "获取所有详情"
+        }
+      ]
+    },
+    {
+      "text": "测试文件上传时使用文件名前",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 3,
+          "context": "测试文件上传时使用文件名前5个字符作为数据库名的功能"
+        }
+      ]
+    },
+    {
+      "text": "个字符作为数据库名的功能",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 3,
+          "context": "测试文件上传时使用文件名前5个字符作为数据库名的功能"
+        }
+      ]
+    },
+    {
+      "text": "测试数据库名生成功能",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 19,
+          "context": "\"\"\"测试数据库名生成功能\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "编程指南",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 38,
+          "context": "(\"Python编程指南.pdf\", \"Pytho\"),"
+        }
+      ]
+    },
+    {
+      "text": "中文测试文档",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 40,
+          "context": "(\"中文测试文档123.docx\", \"中文测试文\"),"
+        }
+      ]
+    },
+    {
+      "text": "中文测试文",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 40,
+          "context": "(\"中文测试文档123.docx\", \"中文测试文\"),"
+        }
+      ]
+    },
+    {
+      "text": "这是一个中文测试文档",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_database_name.py",
+          "line": 63,
+          "context": "(\"测试文档.txt\", \"这是一个中文测试文档。\"),"
+        }
+      ]
+    },
+    {
+      "text": "用于验证文件上传和解析功能",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 15,
+          "context": "这是一个测试文档，用于验证文件上传和解析功能。"
+        }
+      ]
+    },
+    {
+      "text": "这个文档包含了一些基本的文本内容",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 19,
+          "context": "这个文档包含了一些基本的文本内容，用于测试HyperRAG的文档处理能力。"
+        }
+      ]
+    },
+    {
+      "text": "用于测试",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 19,
+          "context": "这个文档包含了一些基本的文本内容，用于测试HyperRAG的文档处理能力。"
+        }
+      ]
+    },
+    {
+      "text": "的文档处理能力",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 19,
+          "context": "这个文档包含了一些基本的文本内容，用于测试HyperRAG的文档处理能力。"
+        }
+      ]
+    },
+    {
+      "text": "文本解析测试",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 23,
+          "context": "1. 文本解析测试"
+        }
+      ]
+    },
+    {
+      "text": "查询功能测试",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 25,
+          "context": "3. 查询功能测试"
+        }
+      ]
+    },
+    {
+      "text": "这是一个完整的测试流程",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 27,
+          "context": "这是一个完整的测试流程。"
+        }
+      ]
+    },
+    {
+      "text": "文档测试内容包含什么",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 94,
+          "context": "\"question\": \"文档测试内容包含什么？\","
+        }
+      ]
+    },
+    {
+      "text": "主测试流程",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_file_api.py",
+          "line": 104,
+          "context": "\"\"\"主测试流程\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "用于验证",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 23,
+          "context": "这是一个测试文档，用于验证WebSocket日志功能。"
+        }
+      ]
+    },
+    {
+      "text": "本文档将被上传并嵌入到",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 27,
+          "context": "本文档将被上传并嵌入到HyperRAG系统中，期间会产生详细的处理日志。"
+        }
+      ]
+    },
+    {
+      "text": "系统中",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 27,
+          "context": "本文档将被上传并嵌入到HyperRAG系统中，期间会产生详细的处理日志。"
+        }
+      ]
+    },
+    {
+      "text": "期间会产生详细的处理日志",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 27,
+          "context": "本文档将被上传并嵌入到HyperRAG系统中，期间会产生详细的处理日志。"
+        }
+      ]
+    },
+    {
+      "text": "文档上传测试",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 31,
+          "context": "1. 文档上传测试"
+        }
+      ]
+    },
+    {
+      "text": "文件解析测试",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 32,
+          "context": "2. 文件解析测试"
+        }
+      ]
+    },
+    {
+      "text": "日志传输测试",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 34,
+          "context": "4. WebSocket日志传输测试"
+        }
+      ]
+    },
+    {
+      "text": "这是完整的测试流程",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 36,
+          "context": "这是完整的测试流程，用于验证实时日志显示功能。"
+        }
+      ]
+    },
+    {
+      "text": "用于验证实时日志显示功能",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 36,
+          "context": "这是完整的测试流程，用于验证实时日志显示功能。"
+        }
+      ]
+    },
+    {
+      "text": "主函数",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_websocket_logs.py",
+          "line": 147,
+          "context": "\"\"\"主函数\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "测试脚本",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 3,
+          "context": "HyperRAG API 测试脚本"
+        }
+      ]
+    },
+    {
+      "text": "这个脚本演示如何使用",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 5,
+          "context": "这个脚本演示如何使用 HyperRAG 问答 API 接口。"
+        }
+      ]
+    },
+    {
+      "text": "问答",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 5,
+          "context": "这个脚本演示如何使用 HyperRAG 问答 API 接口。"
+        }
+      ]
+    },
+    {
+      "text": "确保在运行之前",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 6,
+          "context": "确保在运行之前："
+        }
+      ]
+    },
+    {
+      "text": "启动后端服务器",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 7,
+          "context": "1. 启动后端服务器：uvicorn main:app --reload"
+        }
+      ]
+    },
+    {
+      "text": "在",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 8,
+          "context": "2. 在 settings.json 中配置正确的 API 密钥和模型设置"
+        }
+      ]
+    },
+    {
+      "text": "中配置正确的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 8,
+          "context": "2. 在 settings.json 中配置正确的 API 密钥和模型设置"
+        }
+      ]
+    },
+    {
+      "text": "密钥和模型设置",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 8,
+          "context": "2. 在 settings.json 中配置正确的 API 密钥和模型设置"
+        }
+      ]
+    },
+    {
+      "text": "测试问答查询",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 46,
+          "context": "\"\"\"测试问答查询\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "主测试函数",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 91,
+          "context": "\"\"\"主测试函数\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "统计三国中提到的人物",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/test_hyperrag_api.py",
+          "line": 114,
+          "context": "\"统计三国中提到的人物\""
+        }
+      ]
+    },
+    {
+      "text": "获取全部数据",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 57,
+          "context": "获取全部数据json"
+        }
+      ]
+    },
+    {
+      "text": "的详情",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 90,
+          "context": "获取指定hyperedge的详情"
+        }
+      ]
+    },
+    {
+      "text": "获取系统设置",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 280,
+          "context": "获取系统设置"
+        }
+      ]
+    },
+    {
+      "text": "保存系统设置",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 311,
+          "context": "保存系统设置"
+        }
+      ]
+    },
+    {
+      "text": "专用的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 431,
+          "context": "HyperRAG 专用的 LLM 函数，使用异步版本"
+        }
+      ]
+    },
+    {
+      "text": "函数",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 431,
+          "context": "HyperRAG 专用的 LLM 函数，使用异步版本"
+        }
+      ]
+    },
+    {
+      "text": "使用异步版本",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 431,
+          "context": "HyperRAG 专用的 LLM 函数，使用异步版本"
+        }
+      ]
+    },
+    {
+      "text": "专用的嵌入函数",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 467,
+          "context": "HyperRAG 专用的嵌入函数"
+        }
+      ]
+    },
+    {
+      "text": "获取或创建指定数据库的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 499,
+          "context": "获取或创建指定数据库的 HyperRAG 实例"
+        }
+      ]
+    },
+    {
+      "text": "向指定数据库的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 579,
+          "context": "向指定数据库的 HyperRAG 插入文档"
+        }
+      ]
+    },
+    {
+      "text": "插入文档",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 579,
+          "context": "向指定数据库的 HyperRAG 插入文档"
+        }
+      ]
+    },
+    {
+      "text": "使用指定数据库的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 608,
+          "context": "使用指定数据库的 HyperRAG 进行问答查询"
+        }
+      ]
+    },
+    {
+      "text": "进行问答查询",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 608,
+          "context": "使用指定数据库的 HyperRAG 进行问答查询"
+        }
+      ]
+    },
+    {
+      "text": "获取指定数据库的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 649,
+          "context": "获取指定数据库的 HyperRAG 实例状态"
+        }
+      ]
+    },
+    {
+      "text": "实例状态",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 649,
+          "context": "获取指定数据库的 HyperRAG 实例状态"
+        }
+      ]
+    },
+    {
+      "text": "重置指定数据库的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 688,
+          "context": "重置指定数据库的 HyperRAG 实例，或重置所有实例"
+        }
+      ]
+    },
+    {
+      "text": "或重置所有实例",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 688,
+          "context": "重置指定数据库的 HyperRAG 实例，或重置所有实例"
+        }
+      ]
+    },
+    {
+      "text": "获取所有上传的文件列表",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 724,
+          "context": "获取所有上传的文件列表"
+        }
+      ]
+    },
+    {
+      "text": "上传文件接口",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 735,
+          "context": "上传文件接口"
+        }
+      ]
+    },
+    {
+      "text": "删除指定的文件",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 783,
+          "context": "删除指定的文件"
+        }
+      ]
+    },
+    {
+      "text": "发送进度更新到所有连接的客户端",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 990,
+          "context": "\"\"\"发送进度更新到所有连接的客户端\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "发送日志消息到所有连接的客户端",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 995,
+          "context": "\"\"\"发送日志消息到所有连接的客户端\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "相关的详细日志输出",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 1053,
+          "context": "\"\"\"配置HyperRAG相关的详细日志输出\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "带实时进度通知",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 1109,
+          "context": "批量嵌入文档到HyperRAG，带实时进度通知"
+        }
+      ]
+    },
+    {
+      "text": "异步处理文件嵌入并发送进度更新",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/main.py",
+          "line": 1127,
+          "context": "\"\"\"异步处理文件嵌入并发送进度更新\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "加载元数据",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 40,
+          "context": "\"\"\"加载元数据\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "保存元数据",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 48,
+          "context": "\"\"\"保存元数据\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "生成唯一的文件",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 53,
+          "context": "\"\"\"生成唯一的文件ID\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "计算文件的",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 57,
+          "context": "\"\"\"计算文件的MD5哈希值\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "哈希值",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 57,
+          "context": "\"\"\"计算文件的MD5哈希值\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "检查文件是否支持",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 65,
+          "context": "\"\"\"检查文件是否支持\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "根据文件名前",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 70,
+          "context": "\"\"\"根据文件名前5个字符生成数据库名\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "个字符生成数据库名",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 70,
+          "context": "\"\"\"根据文件名前5个字符生成数据库名\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "保存上传的文件",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 83,
+          "context": "\"\"\"保存上传的文件\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "获取所有文件列表",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 156,
+          "context": "\"\"\"获取所有文件列表\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "根据",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 179,
+          "context": "\"\"\"根据ID获取文件信息\"\"\""
+        }
+      ]
+    },
+    {
+      "text": "更新文件状态",
+      "occurrences": 1,
+      "locations": [
+        {
+          "file": "backend/file_manager.py",
+          "line": 201,
+          "context": "\"\"\"更新文件状态\"\"\""
+        }
+      ]
+    }
+  ]
+}
