@@ -5,6 +5,7 @@ import json
 import asyncio
 import aioboto3
 import aiohttp
+import httpx
 import numpy as np
 
 from openai import (
@@ -40,7 +41,7 @@ async def gemini_embedding(
     **kwargs
 ) -> np.ndarray:
     """
-    Generate embeddings using Google Gemini API with retry logic
+    Generate embeddings using Google Gemini API with proper retry configuration
     
     Args:
         texts: List of texts to embed
@@ -61,6 +62,7 @@ async def gemini_embedding(
     if api_key:
         os.environ["GOOGLE_API_KEY"] = api_key
     
+    # Use default client configuration - HttpOptions seem to be causing timeout issues
     client = genai.Client(api_key=api_key or os.environ.get("GOOGLE_API_KEY"))
     
     # Process in smaller batches to avoid rate limits
@@ -79,13 +81,10 @@ async def gemini_embedding(
             words = text.split()[:max_words]
             truncated_batch.append(' '.join(words))
         
-        # Retry logic for rate limits
+        # Generate embeddings for batch with proper rate limit handling
         max_retries = 3
-        retry_delay = 1.0
-        
         for attempt in range(max_retries):
             try:
-                # Generate embeddings for batch
                 response = client.models.embed_content(
                     model=model,
                     contents=truncated_batch,
@@ -98,21 +97,24 @@ async def gemini_embedding(
                 # Extract embeddings
                 for embedding in response.embeddings:
                     all_embeddings.append(embedding.values)
+                break  # Success - exit retry loop
+                    
+            except Exception as e:
+                error_str = str(e)
                 
-                # Success - break out of retry loop
-                break
-                
-            except errors.APIError as e:
-                if e.code == 429:  # Rate limit error
+                # Handle rate limit errors (429) with 60-second wait
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str or "rate limit" in error_str.lower():
                     if attempt < max_retries - 1:
-                        # Exponential backoff with jitter
-                        wait_time = retry_delay * (2 ** attempt) + np.random.uniform(0, 1)
-                        print(f"Rate limit hit, waiting {wait_time:.2f} seconds before retry {attempt + 1}/{max_retries}")
-                        await asyncio.sleep(wait_time)
+                        print(f"Rate limit hit (429), waiting 60 seconds before retry {attempt + 1}/{max_retries}")
+                        await asyncio.sleep(60.0)  # Wait exactly 60 seconds for rate limit reset
+                        continue
                     else:
-                        raise  # Re-raise on final attempt
+                        print(f"Rate limit exceeded after {max_retries} attempts")
+                        raise
                 else:
-                    raise  # Re-raise non-rate-limit errors
+                    # For other errors, let the SDK's retry logic handle it, or fail
+                    print(f"Error generating embeddings for batch: {e}")
+                    raise
         
         # Delay between batches to stay within rate limits
         # With 100 requests/min limit, we need ~0.6 seconds between requests
