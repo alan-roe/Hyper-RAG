@@ -50,6 +50,8 @@ const Setting: React.FC = () => {
     selectedDatabase: '',
     maxTokens: 2000,
     temperature: 0.7,
+    embeddingModel: 'text-embedding-3-small',
+    embeddingDim: 1536,
     // 新增Mode配置，默认显示所有modes
     availableModes: ['llm', 'naive', 'graph', 'hyper', 'hyper-lite']
   }
@@ -74,31 +76,41 @@ const Setting: React.FC = () => {
       value: 'openai',
       label: 'OpenAI',
       models: ['gpt-5', 'gpt-5-mini', 'gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
-      defaultBaseUrl: 'https://api.openai.com/v1'
+      defaultBaseUrl: 'https://api.openai.com/v1',
+      defaultEmbeddingModel: 'text-embedding-3-small',
+      defaultEmbeddingDim: 1536
     },
     {
       value: 'azure',
       label: 'Azure OpenAI',
       models: ['gpt-5', 'gpt-5-mini', 'gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
-      defaultBaseUrl: 'https://your-resource.openai.azure.com'
+      defaultBaseUrl: 'https://your-resource.openai.azure.com',
+      defaultEmbeddingModel: 'text-embedding-3-small',
+      defaultEmbeddingDim: 1536
     },
     {
       value: 'gemini',
       label: 'Google Gemini',
       models: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'],
-      defaultBaseUrl: 'https://generativelanguage.googleapis.com'
+      defaultBaseUrl: 'https://generativelanguage.googleapis.com',
+      defaultEmbeddingModel: 'gemini-embedding-001',
+      defaultEmbeddingDim: 1536  // Can use 768, 1536, or 3072
     },
     {
       value: 'anthropic',
       label: 'Anthropic',
       models: ['claude-4-haiku', 'claude-4-sonnet', 'claude-4-opus'],
-      defaultBaseUrl: 'https://api.anthropic.com'
+      defaultBaseUrl: 'https://api.anthropic.com',
+      defaultEmbeddingModel: 'text-embedding-3-small', // Anthropic doesn't have embeddings, fallback to OpenAI
+      defaultEmbeddingDim: 1536
     },
     {
       value: 'custom',
       label: t('settings.custom_api'),
       models: ['custom-model'],
-      defaultBaseUrl: 'http://localhost:11434'
+      defaultBaseUrl: 'http://localhost:11434',
+      defaultEmbeddingModel: 'text-embedding-3-small',
+      defaultEmbeddingDim: 1536
     }
   ]
 
@@ -285,7 +297,9 @@ const Setting: React.FC = () => {
     if (provider) {
       form.setFieldsValue({
         baseUrl: provider.defaultBaseUrl,
-        modelName: provider.models[0] // 设置默认模型，用户仍可输入自定义模型
+        modelName: provider.models[0], // 设置默认模型，用户仍可输入自定义模型
+        embeddingModel: provider.defaultEmbeddingModel,
+        embeddingDim: provider.defaultEmbeddingDim
       })
     }
   }
@@ -420,6 +434,29 @@ const Setting: React.FC = () => {
                   rules={[{ required: true, message: t('settings.temperature_required') }]}
                 >
                   <Input type="number" min={0} max={2} step={0.1} />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="embeddingModel"
+                  label={t('settings.embedding_model')}
+                  rules={[{ required: true, message: t('settings.embedding_model_required') }]}
+                  extra={t('settings.embedding_model_help')}
+                >
+                  <Input placeholder="gemini-embedding-001" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="embeddingDim"
+                  label={t('settings.embedding_dim')}
+                  rules={[{ required: true, message: t('settings.embedding_dim_required') }]}
+                  extra={t('settings.embedding_dim_help')}
+                >
+                  <Input type="number" min={128} max={3072} placeholder="768" />
                 </Form.Item>
               </Col>
             </Row>
