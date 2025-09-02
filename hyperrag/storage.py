@@ -91,7 +91,25 @@ class NanoVectorDBStorage(BaseVectorStorage):
         embeddings_list = await asyncio.gather(
             *[self.embedding_func(batch) for batch in batches]
         )
-        embeddings = np.concatenate(embeddings_list)
+        
+        # Validate embeddings before concatenation
+        valid_embeddings = []
+        for emb in embeddings_list:
+            if emb is None or len(emb) == 0:
+                logger.error(f"Got empty embedding batch in {self.namespace}")
+                raise ValueError(f"Empty embedding received for {self.namespace}")
+            if np.any(np.isnan(emb)) or np.all(emb == 0):
+                logger.error(f"Got NaN or zero embeddings in {self.namespace}")
+                raise ValueError(f"Invalid embeddings (NaN or all zeros) in {self.namespace}")
+            valid_embeddings.append(emb)
+        
+        embeddings = np.concatenate(valid_embeddings)
+        
+        # Final validation
+        if len(embeddings) != len(list_data):
+            logger.error(f"Embedding count mismatch: {len(embeddings)} vs {len(list_data)} items")
+            raise ValueError(f"Embedding dimension mismatch in {self.namespace}")
+            
         for i, d in enumerate(list_data):
             d["__vector__"] = embeddings[i]
         results = self._client.upsert(datas=list_data)
