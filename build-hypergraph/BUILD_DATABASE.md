@@ -7,11 +7,11 @@ This script builds a HyperRAG knowledge database from your local files using Goo
 ### 1. Install Dependencies
 
 ```bash
-# Install builder-specific requirements
-pip install -r requirements_builder.txt
+# Install the required Google Gemini package
+uv add google-genai
 
-# Or if you already have HyperRAG installed, just add:
-pip install google-genai
+# Or install all dependencies from requirements file
+uv pip install -r requirements_builder.txt
 ```
 
 ### 2. Get Gemini API Key
@@ -36,29 +36,29 @@ export GOOGLE_CLOUD_LOCATION="us-central1"
 
 Build database from a directory:
 ```bash
-python build_hyperrag_db.py /path/to/your/project
+uv run python build_hyperrag_db.py /path/to/your/project
 ```
 
 Build from a single file:
 ```bash
-python build_hyperrag_db.py /path/to/document.txt
+uv run python build_hyperrag_db.py /path/to/document.txt
 ```
 
 ### Dry Run (Preview Files)
 
 See which files will be processed without building:
 ```bash
-python build_hyperrag_db.py /path/to/project --dry-run
+uv run python build_hyperrag_db.py /path/to/project --dry-run
 ```
 
 ### Advanced Options
 
 ```bash
-python build_hyperrag_db.py /path/to/project \
+uv run python build_hyperrag_db.py /path/to/project \
   --output ./my_knowledge_base \
   --api-key YOUR_API_KEY \
   --generation-model gemini-2.0-flash-exp \
-  --embedding-model text-embedding-004 \
+  --embedding-model gemini-embedding-001 \
   --embedding-dim 768 \
   --temperature 0.1 \
   --max-file-size 20 \
@@ -69,17 +69,17 @@ python build_hyperrag_db.py /path/to/project \
 
 ```bash
 # Ignore specific patterns via command line
-python build_hyperrag_db.py /path/to/project \
+uv run python build_hyperrag_db.py /path/to/project \
   --ignore "*.test.js" \
   --ignore "temp_*" \
   --ignore "build/"
 
 # Use a custom ignore file
-python build_hyperrag_db.py /path/to/project \
+uv run python build_hyperrag_db.py /path/to/project \
   --ignore-file ./my-ignore-patterns.txt
 
 # Combine multiple methods
-python build_hyperrag_db.py /path/to/project \
+uv run python build_hyperrag_db.py /path/to/project \
   --ignore "*.tmp" \
   --ignore-file ./extra-ignores.txt
 ```
@@ -108,7 +108,7 @@ The script automatically:
 ### Using Vertex AI
 
 ```bash
-python build_hyperrag_db.py /path/to/project \
+uv run python build_hyperrag_db.py /path/to/project \
   --use-vertex \
   --project-id your-gcp-project \
   --location us-central1
@@ -149,24 +149,25 @@ Always ignores:
 
 ### Build knowledge base from a Python project
 ```bash
-python build_hyperrag_db.py ~/my_python_project --dry-run
+uv run python build_hyperrag_db.py ~/my_python_project --dry-run
 # Review the files that will be processed
-python build_hyperrag_db.py ~/my_python_project -o ./python_project_kb
+uv run python build_hyperrag_db.py ~/my_python_project -o ./python_project_kb
 ```
 
 ### Build from documentation folder
 ```bash
-python build_hyperrag_db.py ./docs -o ./docs_knowledge_base \
+uv run python build_hyperrag_db.py ./docs -o ./docs_knowledge_base \
   --max-file-size 5 \
-  --batch-size 20
+  --batch-size 8
 ```
 
 ### Process a codebase with custom model
 ```bash
-python build_hyperrag_db.py ./src \
+uv run python build_hyperrag_db.py ./src \
   --generation-model gemini-2.0-flash-exp \
-  --embedding-dim 1024 \
-  --temperature 0.0
+  --embedding-model gemini-embedding-001 \
+  --embedding-dim 768 \
+  --temperature 0.1
 ```
 
 ## Using the Built Database
@@ -192,7 +193,7 @@ async def llm_func(prompt, **kwargs):
 
 async def embed_func(texts):
     response = client.models.embed_content(
-        model='text-embedding-004',
+        model='gemini-embedding-001',
         contents=texts
     )
     embeddings = [e.values for e in response.embeddings]
@@ -225,7 +226,7 @@ print(result)
 5. **Model selection**:
    - Use `gemini-2.0-flash-exp` for faster, cheaper processing
    - Use `gemini-2.0-pro` for better quality extraction
-   - Embedding dimension should match your model (768 for text-embedding-004)
+   - Embedding dimension should match your model (768 recommended for gemini-embedding-001)
 
 ## Troubleshooting
 
