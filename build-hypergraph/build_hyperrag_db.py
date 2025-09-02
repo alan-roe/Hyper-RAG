@@ -13,9 +13,12 @@ from pathlib import Path
 from typing import List, Set, Optional, Tuple
 from dataclasses import dataclass, field
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import mimetypes
 import fnmatch
+import asyncio
+import time
+from collections import deque
 
 # Google Gemini imports
 from google import genai
@@ -26,6 +29,101 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hyperrag import HyperRAG
 from hyperrag.utils import EmbeddingFunc
+
+
+class RateLimiter:
+    """Rate limiter for Gemini API with sliding window tracking"""
+    
+    def __init__(
+        self,
+        rpm_limit: int = 100,
+        tpm_limit: int = 30000,
+        rpd_limit: int = 1000
+    ):
+        self.rpm_limit = rpm_limit
+        self.tpm_limit = tpm_limit
+        self.rpd_limit = rpd_limit
+        
+        # Sliding windows for tracking
+        self.minute_requests = deque()
+        self.minute_tokens = deque()
+        self.day_requests = deque()
+        
+        # Safety margins (use 90% of limits)
+        self.rpm_limit = int(rpm_limit * 0.9)
+        self.tpm_limit = int(tpm_limit * 0.9)
+        self.rpd_limit = int(rpd_limit * 0.95)
+    
+    async def wait_if_needed(self, token_count: int = 0):
+        """Wait if rate limits would be exceeded"""
+        now = datetime.now()
+        
+        # Clean old entries
+        minute_ago = now - timedelta(minutes=1)
+        day_ago = now - timedelta(days=1)
+        
+        # Remove old entries from sliding windows
+        while self.minute_requests and self.minute_requests[0] < minute_ago:
+            self.minute_requests.popleft()
+        while self.minute_tokens and self.minute_tokens[0][0] < minute_ago:
+            self.minute_tokens.popleft()
+        while self.day_requests and self.day_requests[0] < day_ago:
+            self.day_requests.popleft()
+        
+        # Check if we need to wait
+        wait_time = 0
+        
+        # Check requests per minute
+        if len(self.minute_requests) >= self.rpm_limit:
+            # Wait until the oldest request is older than 1 minute
+            wait_time = max(wait_time, 
+                          (self.minute_requests[0] + timedelta(minutes=1) - now).total_seconds())
+        
+        # Check tokens per minute
+        current_minute_tokens = sum(t[1] for t in self.minute_tokens)
+        if current_minute_tokens + token_count > self.tpm_limit:
+            # Wait until we have room for more tokens
+            wait_time = max(wait_time, 60)  # Wait a full minute to reset
+        
+        # Check requests per day
+        if len(self.day_requests) >= self.rpd_limit:
+            # Wait until the oldest request is older than 1 day
+            wait_time = max(wait_time,
+                          (self.day_requests[0] + timedelta(days=1) - now).total_seconds())
+        
+        if wait_time > 0:
+            print(f"Rate limit approaching, waiting {wait_time:.1f} seconds...")
+            await asyncio.sleep(wait_time)
+        
+        # Record this request
+        self.minute_requests.append(now)
+        self.minute_tokens.append((now, token_count))
+        self.day_requests.append(now)
+    
+    def get_status(self):
+        """Get current rate limit status"""
+        now = datetime.now()
+        minute_ago = now - timedelta(minutes=1)
+        day_ago = now - timedelta(days=1)
+        
+        # Clean old entries
+        while self.minute_requests and self.minute_requests[0] < minute_ago:
+            self.minute_requests.popleft()
+        while self.minute_tokens and self.minute_tokens[0][0] < minute_ago:
+            self.minute_tokens.popleft()
+        while self.day_requests and self.day_requests[0] < day_ago:
+            self.day_requests.popleft()
+        
+        current_minute_tokens = sum(t[1] for t in self.minute_tokens)
+        
+        return {
+            "rpm_used": len(self.minute_requests),
+            "rpm_limit": self.rpm_limit,
+            "tpm_used": current_minute_tokens,
+            "tpm_limit": self.tpm_limit,
+            "rpd_used": len(self.day_requests),
+            "rpd_limit": self.rpd_limit
+        }
 
 
 @dataclass
@@ -246,7 +344,7 @@ class FileProcessor:
 
 
 class GeminiRAGBuilder:
-    """Builds HyperRAG database using Google Gemini API"""
+    """Builds HyperRAG database using Google Gemini API with rate limiting"""
     
     def __init__(
         self,
@@ -255,10 +353,14 @@ class GeminiRAGBuilder:
         project_id: Optional[str] = None,
         location: str = 'us-central1',
         generation_model: str = 'gemini-2.0-flash-exp',
-        embedding_model: str = 'text-embedding-004',
-        embedding_dim: int = 768,
+        embedding_model: str = 'gemini-embedding-001',  # Updated to stable model
+        embedding_dim: int = 768,  # OpenAI uses 1536 for text-embedding-3-small
         temperature: float = 0.1,
-        max_output_tokens: int = 2048
+        max_output_tokens: int = 2048,
+        # Rate limit parameters
+        rpm_limit: int = 100,
+        tpm_limit: int = 30000,
+        rpd_limit: int = 1000
     ):
         """Initialize Gemini client and configuration"""
         
@@ -277,6 +379,17 @@ class GeminiRAGBuilder:
         self.embedding_dim = embedding_dim
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
+        
+        # Initialize rate limiter
+        self.rate_limiter = RateLimiter(
+            rpm_limit=rpm_limit,
+            tpm_limit=tpm_limit,
+            rpd_limit=rpd_limit
+        )
+        
+        # Retry configuration
+        self.max_retries = 3
+        self.retry_delay = 1.0  # Initial delay in seconds
         
         # Test connection
         self._test_connection()
@@ -304,86 +417,159 @@ class GeminiRAGBuilder:
         history_messages: list = [],
         **kwargs
     ) -> str:
-        """LLM function for HyperRAG"""
-        try:
-            # Combine system prompt and user prompt
-            full_prompt = prompt
-            if system_prompt:
-                full_prompt = f"{system_prompt}\n\n{prompt}"
-            
-            # Generate response
-            response = self.client.models.generate_content(
-                model=self.generation_model,
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    temperature=self.temperature,
-                    max_output_tokens=self.max_output_tokens,
-                    candidate_count=1
+        """LLM function for HyperRAG with rate limiting and retries"""
+        # Estimate token count (rough approximation)
+        estimated_tokens = len(prompt.split()) * 1.3
+        
+        for attempt in range(self.max_retries):
+            try:
+                # Apply rate limiting
+                await self.rate_limiter.wait_if_needed(int(estimated_tokens))
+                
+                # Combine system prompt and user prompt
+                full_prompt = prompt
+                if system_prompt:
+                    full_prompt = f"{system_prompt}\n\n{prompt}"
+                
+                # Generate response
+                response = self.client.models.generate_content(
+                    model=self.generation_model,
+                    contents=full_prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=self.temperature,
+                        max_output_tokens=self.max_output_tokens,
+                        candidate_count=1
+                    )
                 )
-            )
+                
+                return response.text
             
-            return response.text
-        except Exception as e:
-            print(f"LLM generation error: {e}")
-            return ""
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    print(f"LLM generation error (attempt {attempt + 1}/{self.max_retries}): {e}")
+                    print(f"Retrying in {wait_time:.1f} seconds...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"LLM generation failed after {self.max_retries} attempts: {e}")
+                    return ""
     
     async def embedding_func(self, texts: List[str]) -> np.ndarray:
-        """Embedding function for HyperRAG"""
-        try:
-            # Generate embeddings
-            response = self.client.models.embed_content(
-                model=self.embedding_model,
-                contents=texts,
-                config=types.EmbedContentConfig(
-                    output_dimensionality=self.embedding_dim,
-                    task_type='RETRIEVAL_DOCUMENT',
-                    auto_truncate=True
-                )
-            )
+        """Embedding function for HyperRAG with rate limiting and batching"""
+        # Batch texts to stay within token limits (2048 per text for gemini-embedding-001)
+        # Estimate tokens and apply batching
+        estimated_tokens = sum(len(text.split()) * 1.3 for text in texts)
+        
+        for attempt in range(self.max_retries):
+            try:
+                # Apply rate limiting
+                await self.rate_limiter.wait_if_needed(int(estimated_tokens))
+                
+                # Split texts into smaller batches if needed to avoid hitting TPM
+                max_batch_size = min(10, len(texts))  # Process max 10 texts at a time
+                
+                all_embeddings = []
+                for i in range(0, len(texts), max_batch_size):
+                    batch = texts[i:i + max_batch_size]
+                    
+                    # Truncate texts that are too long (gemini-embedding-001 has 2048 token limit)
+                    truncated_batch = []
+                    for text in batch:
+                        # Rough truncation at ~2000 tokens (assuming ~1.3 tokens per word)
+                        max_words = int(2000 / 1.3)
+                        words = text.split()[:max_words]
+                        truncated_batch.append(' '.join(words))
+                    
+                    # Generate embeddings for batch
+                    response = self.client.models.embed_content(
+                        model=self.embedding_model,
+                        contents=truncated_batch,
+                        config=types.EmbedContentConfig(
+                            output_dimensionality=self.embedding_dim,
+                            task_type='RETRIEVAL_DOCUMENT'
+                        )
+                    )
+                    
+                    # Extract embeddings
+                    for embedding in response.embeddings:
+                        all_embeddings.append(embedding.values)
+                    
+                    # Small delay between batches to avoid bursting
+                    if i + max_batch_size < len(texts):
+                        await asyncio.sleep(0.5)
+                
+                return np.array(all_embeddings, dtype=np.float32)
             
-            # Convert to numpy array
-            embeddings = []
-            for embedding in response.embeddings:
-                embeddings.append(embedding.values)
-            
-            return np.array(embeddings, dtype=np.float32)
-        except Exception as e:
-            print(f"Embedding generation error: {e}")
-            # Return zero embeddings on error
-            return np.zeros((len(texts), self.embedding_dim), dtype=np.float32)
+            except Exception as e:
+                if attempt < self.max_retries - 1:
+                    wait_time = self.retry_delay * (2 ** attempt)
+                    print(f"Embedding error (attempt {attempt + 1}/{self.max_retries}): {e}")
+                    print(f"Retrying in {wait_time:.1f} seconds...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Embedding generation failed after {self.max_retries} attempts: {e}")
+                    # Return zero embeddings on error
+                    return np.zeros((len(texts), self.embedding_dim), dtype=np.float32)
     
     def build_database(
         self,
         files: List[Tuple[Path, str]],
         output_dir: Path,
-        batch_size: int = 10
+        batch_size: int = 5  # Reduced for Gemini rate limits
     ):
-        """Build HyperRAG database from files"""
+        """Build HyperRAG database from files with progress tracking"""
         
         # Initialize HyperRAG
         print(f"\nInitializing HyperRAG database in {output_dir}")
+        print(f"Configuration:")
+        print(f"  - Chunk size: 1200 tokens (matching OpenAI)")
+        print(f"  - Chunk overlap: 100 tokens")
+        print(f"  - Embedding batch: 8 (optimized for Gemini rate limits)")
+        print(f"  - Max async LLM: 3 (conservative for rate limits)")
+        print(f"  - Embedding model: {self.embedding_model}")
+        print(f"  - Embedding dimension: {self.embedding_dim}")
+        
         rag = HyperRAG(
             working_dir=str(output_dir),
             llm_model_func=self.llm_func,
             embedding_func=EmbeddingFunc(
                 embedding_dim=self.embedding_dim,
-                max_token_size=8192,
+                max_token_size=2048,  # Gemini embedding model limit
                 func=self.embedding_func
             ),
-            # Tune these for Gemini
-            chunk_token_size=1000,
-            chunk_overlap_token_size=100,
-            embedding_batch_num=20,
-            llm_model_max_async=5  # Gemini rate limits
+            # Match OpenAI settings for consistency, but adjust batching for rate limits
+            chunk_token_size=1200,  # Same as OpenAI default
+            chunk_overlap_token_size=100,  # Same as OpenAI default
+            embedding_batch_num=8,  # Reduced from 32 to respect Gemini rate limits
+            llm_model_max_async=3  # Conservative for Gemini rate limits (was 16 for OpenAI)
         )
         
-        # Process files in batches
+        # Process files in batches with progress tracking
         total_files = len(files)
+        processed_files = 0
+        failed_files = []
+        start_time = time.time()
+        
+        print(f"\nProcessing {total_files} files in batches of {batch_size}")
+        print(f"Rate limits: {self.rate_limiter.rpm_limit} RPM, {self.rate_limiter.tpm_limit} TPM\n")
+        
         for i in range(0, total_files, batch_size):
             batch = files[i:i+batch_size]
             batch_texts = []
+            batch_start = time.time()
             
-            print(f"\nProcessing batch {i//batch_size + 1}/{(total_files + batch_size - 1)//batch_size}")
+            # Calculate progress
+            batch_num = i//batch_size + 1
+            total_batches = (total_files + batch_size - 1)//batch_size
+            progress_pct = (i / total_files) * 100
+            
+            print(f"Batch {batch_num}/{total_batches} ({progress_pct:.1f}% complete)")
+            
+            # Show rate limit status periodically
+            if batch_num % 5 == 0 or batch_num == 1:
+                status = self.rate_limiter.get_status()
+                print(f"  Rate limits: {status['rpm_used']}/{status['rpm_limit']} RPM, "
+                      f"{status['tpm_used']}/{status['tpm_limit']} TPM")
             
             for path, content in batch:
                 # Add file path as metadata
@@ -391,30 +577,66 @@ class GeminiRAGBuilder:
                 metadata = f"File: {rel_path}\n---\n"
                 full_content = metadata + content
                 batch_texts.append(full_content)
-                print(f"  Adding: {rel_path}")
+                print(f"  Processing: {rel_path} ({len(content)/1024:.1f} KB)")
             
             # Insert batch into RAG
             try:
                 rag.insert(batch_texts)
-                print(f"  ✓ Batch inserted successfully")
+                processed_files += len(batch)
+                batch_time = time.time() - batch_start
+                print(f"  ✓ Batch complete in {batch_time:.1f}s")
+                
+                # Estimate remaining time
+                if processed_files > 0:
+                    elapsed = time.time() - start_time
+                    avg_time_per_file = elapsed / processed_files
+                    remaining_files = total_files - processed_files
+                    eta = avg_time_per_file * remaining_files
+                    print(f"  ETA: {eta/60:.1f} minutes remaining\n")
+                    
             except Exception as e:
                 print(f"  ✗ Error inserting batch: {e}")
-                print("  Retrying with smaller chunks...")
+                print("  Retrying files individually...")
+                
                 # Try inserting one by one
-                for text in batch_texts:
+                for j, (text, (path, _)) in enumerate(zip(batch_texts, batch)):
                     try:
-                        rag.insert(text)
+                        rag.insert([text])
+                        processed_files += 1
+                        print(f"    ✓ {path.name} inserted")
                     except Exception as e2:
-                        print(f"    Failed to insert file: {e2}")
+                        print(f"    ✗ Failed to insert {path.name}: {e2}")
+                        failed_files.append(path)
         
-        print(f"\n✓ Database built successfully in {output_dir}")
+        # Final statistics
+        total_time = time.time() - start_time
+        print(f"\n{'='*60}")
+        print(f"✓ Database build complete!")
+        print(f"{'='*60}")
+        print(f"\nStatistics:")
+        print(f"  Total files processed: {processed_files}/{total_files}")
+        if failed_files:
+            print(f"  Failed files: {len(failed_files)}")
+            for failed in failed_files[:5]:  # Show first 5 failed files
+                print(f"    - {failed.name}")
+            if len(failed_files) > 5:
+                print(f"    ... and {len(failed_files) - 5} more")
+        print(f"  Total time: {total_time/60:.1f} minutes")
+        print(f"  Average time per file: {total_time/max(1, processed_files):.2f} seconds")
+        
+        # Print rate limit final status
+        final_status = self.rate_limiter.get_status()
+        print(f"\nFinal rate limit usage:")
+        print(f"  Requests today: {final_status['rpd_used']}/{final_status['rpd_limit']}")
         
         # Print database statistics
         db_files = list(output_dir.glob("*"))
-        print("\nDatabase files created:")
-        for db_file in db_files:
+        total_size = sum(f.stat().st_size for f in db_files)
+        print(f"\nDatabase files created in {output_dir}:")
+        for db_file in sorted(db_files):
             size_kb = db_file.stat().st_size / 1024
             print(f"  {db_file.name}: {size_kb:.1f} KB")
+        print(f"\nTotal database size: {total_size/1024/1024:.2f} MB")
 
 
 def main():
@@ -470,8 +692,8 @@ def main():
     parser.add_argument(
         "--embedding-model",
         type=str,
-        default="text-embedding-004",
-        help="Gemini model for embeddings"
+        default="gemini-embedding-001",
+        help="Gemini model for embeddings (default: gemini-embedding-001)"
     )
     parser.add_argument(
         "--embedding-dim",
@@ -496,8 +718,8 @@ def main():
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=10,
-        help="Number of files to process in each batch"
+        default=5,
+        help="Number of files to process in each batch (default: 5, optimized for Gemini rate limits)"
     )
     
     # Ignore pattern arguments
@@ -511,6 +733,26 @@ def main():
         "--ignore-file",
         type=str,
         help="Path to file containing ignore patterns (like .gitignore)"
+    )
+    
+    # Rate limit arguments
+    parser.add_argument(
+        "--rpm-limit",
+        type=int,
+        default=100,
+        help="Requests per minute limit (default: 100)"
+    )
+    parser.add_argument(
+        "--tpm-limit",
+        type=int,
+        default=30000,
+        help="Tokens per minute limit (default: 30000)"
+    )
+    parser.add_argument(
+        "--rpd-limit",
+        type=int,
+        default=1000,
+        help="Requests per day limit (default: 1000)"
     )
     
     # Other arguments
@@ -590,7 +832,8 @@ def main():
         # Create output directory
         output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Initialize builder
+        # Initialize builder with rate limits
+        print("\nInitializing Gemini RAG Builder...")
         builder = GeminiRAGBuilder(
             api_key=args.api_key,
             use_vertex=args.use_vertex,
@@ -599,7 +842,10 @@ def main():
             generation_model=args.generation_model,
             embedding_model=args.embedding_model,
             embedding_dim=args.embedding_dim,
-            temperature=args.temperature
+            temperature=args.temperature,
+            rpm_limit=args.rpm_limit,
+            tpm_limit=args.tpm_limit,
+            rpd_limit=args.rpd_limit
         )
         
         # Build database
@@ -614,6 +860,26 @@ def main():
         print(f"  1. Copy {output_dir} to your desired location")
         print(f"  2. Initialize HyperRAG with working_dir='{output_dir}'")
         print("  3. Use rag.query() to search your knowledge base")
+        
+        print("\n" + "="*60)
+        print("OPTIMIZATION TIPS FOR GEMINI:")
+        print("="*60)
+        print("\n1. RATE LIMITS (Gemini Embedding API):")
+        print("   - 100 requests/minute (RPM)")
+        print("   - 30,000 tokens/minute (TPM)")
+        print("   - 1,000 requests/day (RPD)")
+        print("\n2. RECOMMENDED SETTINGS:")
+        print("   - Chunk size: 1200 tokens (same as OpenAI for quality parity)")
+        print("   - Batch size: 5-8 files (balanced for rate limits)")
+        print("   - Embedding dimension: 768 (good balance of quality/performance)")
+        print("\n3. PERFORMANCE COMPARISON:")
+        print("   OpenAI defaults: batch=32, async=16")
+        print("   Gemini optimized: batch=8, async=3 (respects rate limits)")
+        print("\n4. TO INCREASE SPEED:")
+        print("   - Use Vertex AI for enterprise workloads (higher limits)")
+        print("   - Process during off-peak hours")
+        print("   - Consider parallel processing with multiple API keys")
+        print("="*60)
 
 
 if __name__ == "__main__":
