@@ -30,6 +30,11 @@ from .base import (
 )
 
 from .prompt import GRAPH_FIELD_SEP, PROMPTS
+from .structured_outputs import (
+    KeywordExtractionResponse,
+    EntityExtractionResponse,
+    convert_to_legacy_format,
+)
 
 def chunking_by_token_size(
     content: str, overlap_token_size=128, max_token_size=1024, tiktoken_model="gpt-4o"
