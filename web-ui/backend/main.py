@@ -898,15 +898,29 @@ def get_or_create_hyperrag(database: str = None):
             else:
                 embedding_dim = settings.get("embeddingDim", 1536)
         
+        # Check if we should use smart LLM wrapper with structured output support
+        if settings.get("useStructuredOutput", False):
+            # Use smart wrapper for automatic structured output handling
+            from hyperrag.llm_structured_wrapper import create_smart_llm_func
+            llm_func = create_smart_llm_func(settings)
+            main_logger.info("Using smart LLM wrapper with structured output support")
+        else:
+            # Use traditional LLM function
+            llm_func = get_hyperrag_llm_func
+            main_logger.info("Using traditional LLM function")
+        
         # 初始化 HyperRAG 实例
         hyperrag_instances[database] = HyperRAG(
             working_dir=db_working_dir,
-            llm_model_func=get_hyperrag_llm_func,
+            llm_model_func=llm_func,
             embedding_func=EmbeddingFunc(
                 embedding_dim=embedding_dim,
                 max_token_size=8192,
                 func=get_hyperrag_embedding_func
             ),
+            entity_extract_max_gleaning=settings.get("entityExtractMaxGleaning", 1),
+            chunk_token_size=settings.get("chunkTokenSize", 1200),
+            chunk_overlap_token_size=settings.get("chunkOverlapTokenSize", 100),
         )
         
         main_logger.info(t('hyperrag_instance_created', database=database))
