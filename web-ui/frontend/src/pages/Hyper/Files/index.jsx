@@ -323,6 +323,43 @@ return;
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedFiles.size === 0) {
+      showNotification(t('files.select_files_first'), 'warning');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      t('files.confirm_bulk_delete', { count: selectedFiles.size })
+    );
+    
+    if (!confirmDelete) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${SERVER_URL}/files/delete-bulk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ file_ids: Array.from(selectedFiles) }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        showNotification(data.message, 'success');
+        fetchFiles();
+        setSelectedFiles(new Set());
+      } else {
+        showNotification(data.message || t('files.bulk_delete_failed'), 'error');
+      }
+    } catch (error) {
+      showNotification(t('files.bulk_delete_failed'), 'error');
+    }
+  };
+
   const formatFileSize = (bytes) => {
     if (bytes === 0) {
 return '0 Bytes';
@@ -418,6 +455,14 @@ return '0 Bytes';
               >
                 {selectedFiles.size === files.length ? t('files.deselect_all') : t('files.select_all')}
               </button>
+              {selectedFiles.size > 0 && (
+                <button
+                  onClick={handleBulkDelete}
+                  className="border-0 px-4 py-2 text-sm font-medium rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
+                >
+                  {t('files.delete_selected')} ({selectedFiles.size})
+                </button>
+              )}
               <button
                 onClick={handleEmbedDocuments}
                 disabled={selectedFiles.size === 0 || isEmbedding}
