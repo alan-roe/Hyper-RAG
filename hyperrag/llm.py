@@ -28,7 +28,7 @@ from tenacity import (
     retry_if_exception_type,
 )
 from pydantic import BaseModel, Field
-from typing import List, Dict, Callable, Any
+from typing import List, Dict, Callable, Any, Optional, Type
 from .base import BaseKVStorage
 from .utils import compute_args_hash, wrap_embedding_func_with_attrs
 
@@ -290,6 +290,62 @@ async def openai_complete_if_cache(
             {args_hash: {"return": response.choices[0].message.content, "model": model}}
         )
     return response.choices[0].message.content
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception_type((RateLimitError, APIConnectionError, Timeout)),
+)
+async def openai_complete_with_structured_output(
+    model: str,
+    prompt: str,
+    response_model: Type[BaseModel],
+    system_prompt: str = None,
+    history_messages: list = [],
+    base_url: str = None,
+    api_key: str = None,
+    **kwargs,
+) -> BaseModel:
+    """
+    Call OpenAI with structured output using Pydantic models.
+    
+    Args:
+        model: OpenAI model name (must support structured outputs, e.g., gpt-4o-2024-08-06)
+        prompt: User prompt
+        response_model: Pydantic model class for structured output
+        system_prompt: System prompt
+        history_messages: Conversation history
+        base_url: Optional base URL for API
+        api_key: Optional API key
+        **kwargs: Additional arguments for OpenAI API
+    
+    Returns:
+        Instance of response_model with parsed structured output
+    """
+    if api_key:
+        os.environ["OPENAI_API_KEY"] = api_key
+    
+    openai_async_client = (
+        AsyncOpenAI() if base_url is None else AsyncOpenAI(base_url=base_url)
+    )
+    
+    messages = []
+    if system_prompt is not None:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.extend(history_messages)
+    messages.append({"role": "user", "content": prompt})
+    
+    # Use beta.chat.completions.parse for structured output
+    response = await openai_async_client.beta.chat.completions.parse(
+        model=model,
+        messages=messages,
+        response_format=response_model,
+        **kwargs
+    )
+    
+    # Return the parsed object
+    return response.choices[0].message.parsed
 
 
 @retry(
@@ -732,7 +788,7 @@ async def local_embedding(
                     }
                     
                     async with session.post(
-                        f"{base_url}/embeddings",
+                        f"{base_url}/v1/embeddings",
                         json=payload,
                         headers=headers
                     ) as response:
