@@ -414,11 +414,59 @@ async def create_database(request: CreateDatabaseRequest):
         # Save empty database to create the file
         new_db.save(Path(database_path))
         
-        main_logger.info(f"Created new database: {database_name}")
+        # Get current embedding dimensions from settings
+        settings = {}
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                settings = json.load(f)
+        
+        # Determine embedding dimensions based on provider and model
+        embedding_provider = settings.get("embeddingProvider", settings.get("modelProvider", "openai"))
+        embedding_model = settings.get("embeddingModel", "text-embedding-3-small")
+        
+        if embedding_provider == "local":
+            # Local models - common dimensions
+            if "nomic" in embedding_model.lower():
+                embedding_dim = 768
+            elif "bge" in embedding_model.lower():
+                embedding_dim = 1024
+            elif "e5" in embedding_model.lower():
+                embedding_dim = 1024
+            else:
+                embedding_dim = settings.get("embeddingDim", 768)  # Default to 768 or user-specified
+        elif embedding_provider == "gemini":
+            embedding_dim = settings.get("embeddingDim", 768)
+        else:
+            # OpenAI models
+            if "text-embedding-3-large" in embedding_model:
+                embedding_dim = 3072
+            elif "text-embedding-3-small" in embedding_model:
+                embedding_dim = 1536
+            elif "text-embedding-ada-002" in embedding_model:
+                embedding_dim = 1536
+            else:
+                embedding_dim = settings.get("embeddingDim", 1536)
+        
+        # Initialize vector database files with correct dimensions
+        from nano_vectordb import NanoVectorDB
+        
+        # Create empty vector databases for chunks, entities, and relationships
+        for vdb_name in ["vdb_chunks", "vdb_entities", "vdb_relationships"]:
+            vdb_path = os.path.join(database_dir, f"{vdb_name}.json")
+            vdb = NanoVectorDB(embedding_dim, storage_file=vdb_path)
+            vdb.save()
+        
+        # Create empty KV store files
+        for kv_name in ["kv_store_full_docs", "kv_store_text_chunks", "kv_store_llm_response_cache"]:
+            kv_path = os.path.join(database_dir, f"{kv_name}.json")
+            with open(kv_path, 'w') as f:
+                json.dump({}, f)
+        
+        main_logger.info(f"Created new database: {database_name} with embedding_dim: {embedding_dim}")
         
         return {
             "success": True, 
-            "message": f"Database '{database_name}' created successfully",
+            "message": f"Database '{database_name}' created successfully with {embedding_dim}-dimensional embeddings",
             "database": database_name
         }
     except Exception as e:
@@ -631,25 +679,41 @@ async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
         
         main_logger.info(t('using_embedding_model', model=embedding_model))
         
-        # Check model provider
-        if model_provider == "gemini":
+        # Check if we should use a separate embedding provider
+        embedding_provider = settings.get("embeddingProvider", model_provider)
+        embedding_api_key = settings.get("embeddingApiKey", api_key)
+        embedding_base_url = settings.get("embeddingBaseUrl", base_url)
+        
+        # Check embedding provider
+        if embedding_provider == "local":
+            # Use local embedding server
+            from hyperrag.llm import local_embedding
+            embeddings = await local_embedding(
+                texts,
+                base_url=embedding_base_url or "http://localhost:1234",
+                model=embedding_model,
+                api_key=embedding_api_key,
+                batch_size=settings.get("embeddingBatchSize", 32)
+            )
+        elif embedding_provider == "gemini":
             # Use Gemini embeddings
             from hyperrag.llm import gemini_embedding
             embeddings = await gemini_embedding(
                 texts,
                 model=embedding_model,
-                api_key=api_key,
+                api_key=embedding_api_key,
                 embedding_dim=embedding_dim
             )
         else:
             # Use OpenAI embeddings (for openai, azure, custom, etc.)
             # If api_key is a list, use the first one (OpenAI doesn't support rotation yet)
-            embedding_api_key = api_key[0] if isinstance(api_key, list) and api_key else api_key
+            if isinstance(embedding_api_key, list) and embedding_api_key:
+                embedding_api_key = embedding_api_key[0]
             embeddings = await openai_embedding(
                 texts,
                 model=embedding_model,
                 api_key=embedding_api_key,
-                base_url=base_url,
+                base_url=embedding_base_url,
             )
         
         main_logger.info(t('text_embedding_complete', dimensions=embeddings.shape))
@@ -691,12 +755,43 @@ def get_or_create_hyperrag(database: str = None):
         
         main_logger.info(t('hyperrag_working_dir', dir=db_working_dir))
         
+        # Get embedding dimensions from settings
+        with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+            settings = json.load(f)
+        
+        embedding_provider = settings.get("embeddingProvider", settings.get("modelProvider", "openai"))
+        embedding_model = settings.get("embeddingModel", "text-embedding-3-small")
+        
+        # Determine embedding dimensions based on provider and model
+        if embedding_provider == "local":
+            # Local models - common dimensions
+            if "nomic" in embedding_model.lower():
+                embedding_dim = 768
+            elif "bge" in embedding_model.lower():
+                embedding_dim = 1024
+            elif "e5" in embedding_model.lower():
+                embedding_dim = 1024
+            else:
+                embedding_dim = settings.get("embeddingDim", 768)  # Default to 768 or user-specified
+        elif embedding_provider == "gemini":
+            embedding_dim = settings.get("embeddingDim", 768)
+        else:
+            # OpenAI models
+            if "text-embedding-3-large" in embedding_model:
+                embedding_dim = 3072
+            elif "text-embedding-3-small" in embedding_model:
+                embedding_dim = 1536
+            elif "text-embedding-ada-002" in embedding_model:
+                embedding_dim = 1536
+            else:
+                embedding_dim = settings.get("embeddingDim", 1536)
+        
         # 初始化 HyperRAG 实例
         hyperrag_instances[database] = HyperRAG(
             working_dir=db_working_dir,
             llm_model_func=get_hyperrag_llm_func,
             embedding_func=EmbeddingFunc(
-                embedding_dim=1536,  # text-embedding-3-small 的维度
+                embedding_dim=embedding_dim,
                 max_token_size=8192,
                 func=get_hyperrag_embedding_func
             ),
