@@ -27,4 +27,7 @@ dependencies = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
     "asyncio>=4.0.0",
+    "aiolimiter>=1.2.1",
+    "sentence-transformers>=5.1.0",
+    "einops>=0.8.1",
 ]
