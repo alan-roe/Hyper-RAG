@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, WebSocketDisconnect, Body
 from fastapi.middleware.cors import CORSMiddleware
 from db import get_hypergraph, getFrequentVertices, get_vertices, get_hyperedges, get_vertice, get_vertice_neighbor, get_hyperedge_neighbor_server, add_vertex, add_hyperedge, delete_vertex, delete_hyperedge, update_vertex, update_hyperedge, get_hyperedge_detail, db_manager
 from file_manager import file_manager
@@ -556,12 +556,14 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
     HyperRAG-specific LLM function, using async version
     HyperRAG 专用的 LLM 函数，使用异步版本
     """
+    # Initialize variables that might be used in error handler
+    estimated_tokens = 0
+    model_name = "unknown"
+    model_provider = "unknown"
+    base_url = None
+    
     try:
-        main_logger.info(t('llm_call_start', length=len(prompt)))
-        if system_prompt:
-            main_logger.info(t('system_prompt_length', length=len(system_prompt)))
-        
-        # 从设置文件读取配置
+        # Load settings first to get model name for token counting
         with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
             settings = json.load(f)
         
@@ -574,6 +576,81 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
             llm_api_key = api_key
         base_url = settings.get("baseUrl")
         model_provider = settings.get("modelProvider", "openai")
+        
+        # Enhanced logging for debugging token length issues
+        main_logger.info(f"=== LLM Request Debug Info ===")
+        main_logger.info(f"Model: {model_name} (Provider: {model_provider})")
+        main_logger.info(f"Prompt length (chars): {len(prompt)}")
+        main_logger.info(f"Prompt length (words approx): {len(prompt.split())}")
+        main_logger.info(f"Prompt preview (first 200 chars): {prompt[:200]}...")
+        
+        if system_prompt:
+            main_logger.info(f"System prompt length (chars): {len(system_prompt)}")
+            main_logger.info(f"System prompt length (words approx): {len(system_prompt.split())}")
+            main_logger.info(f"System prompt preview (first 200 chars): {system_prompt[:200]}...")
+        
+        if history_messages:
+            total_history_length = sum(len(msg.get("content", "")) for msg in history_messages)
+            main_logger.info(f"History messages count: {len(history_messages)}")
+            main_logger.info(f"Total history content length (chars): {total_history_length}")
+        
+        # Use tiktoken for accurate token counting
+        import tiktoken
+        
+        # Get the appropriate encoder for the model
+        try:
+            # Try to get encoder for the specific model
+            if "gpt" in model_name.lower():
+                encoder = tiktoken.encoding_for_model(model_name)
+            else:
+                # Use cl100k_base as default (GPT-4 encoder)
+                encoder = tiktoken.get_encoding("cl100k_base")
+        except:
+            # Fallback to cl100k_base
+            encoder = tiktoken.get_encoding("cl100k_base")
+        
+        # Count tokens accurately
+        prompt_tokens = len(encoder.encode(prompt))
+        system_tokens = len(encoder.encode(system_prompt)) if system_prompt else 0
+        history_tokens = 0
+        if history_messages:
+            for msg in history_messages:
+                content = msg.get("content", "")
+                history_tokens += len(encoder.encode(content))
+        
+        estimated_tokens = prompt_tokens + system_tokens + history_tokens
+        
+        main_logger.info(f"=== Accurate Token Count (using tiktoken) ===")
+        main_logger.info(f"Prompt tokens: {prompt_tokens}")
+        main_logger.info(f"System prompt tokens: {system_tokens}")
+        main_logger.info(f"History tokens: {history_tokens}")
+        main_logger.info(f"Total tokens: {estimated_tokens}")
+        
+        # Warn if approaching common context limits
+        if estimated_tokens > 120000:
+            main_logger.warning(f"Token count ({estimated_tokens}) exceeds 128k context window!")
+        elif estimated_tokens > 30000:
+            main_logger.warning(f"Token count ({estimated_tokens}) exceeds 32k context window!")
+        elif estimated_tokens > 14000:
+            main_logger.warning(f"Token count ({estimated_tokens}) exceeds 16k context window!")
+        elif estimated_tokens > 7000:
+            main_logger.warning(f"Token count ({estimated_tokens}) exceeds 8k context window!")
+        elif estimated_tokens > 3500:
+            main_logger.warning(f"Token count ({estimated_tokens}) exceeds 4k context window!")
+        
+        # Log kwargs for additional parameters
+        if kwargs:
+            main_logger.info(f"Additional kwargs: {list(kwargs.keys())}")
+            if 'max_tokens' in kwargs:
+                main_logger.info(f"max_tokens parameter: {kwargs['max_tokens']}")
+            if 'temperature' in kwargs:
+                main_logger.info(f"temperature parameter: {kwargs['temperature']}")
+        
+        main_logger.info(f"=== End Debug Info ===")
+        
+        main_logger.info(t('llm_call_start', length=len(prompt)))
+        if system_prompt:
+            main_logger.info(t('system_prompt_length', length=len(system_prompt)))
         
         main_logger.info(t('using_model', model=model_name, url=base_url))
         
@@ -641,6 +718,12 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
                         raise
         else:
             # Use OpenAI-compatible API
+            main_logger.info(f"Making OpenAI-compatible API call:")
+            main_logger.info(f"  - Model: {model_name}")
+            main_logger.info(f"  - Base URL: {base_url}")
+            main_logger.info(f"  - Has API key: {bool(llm_api_key)}")
+            main_logger.info(f"  - Additional kwargs keys: {list(kwargs.keys()) if kwargs else 'None'}")
+            
             response = await openai_complete_if_cache(
                 model_name,
                 prompt,
@@ -655,6 +738,35 @@ async def get_hyperrag_llm_func(prompt, system_prompt=None, history_messages=[],
         return response
         
     except Exception as e:
+        error_str = str(e)
+        main_logger.error(f"=== LLM Call Failed ===")
+        main_logger.error(f"Error type: {type(e).__name__}")
+        main_logger.error(f"Error message: {error_str}")
+        
+        # Check for specific error patterns
+        if "400" in error_str or "tokens to keep" in error_str:
+            main_logger.error("This appears to be a token context length issue!")
+            main_logger.error(f"Model being used: {model_name}")
+            main_logger.error(f"Provider: {model_provider}")
+            main_logger.error(f"Base URL: {base_url}")
+            
+            # Log the actual request parameters that caused the issue
+            main_logger.error(f"Failed request details:")
+            main_logger.error(f"  - Prompt length (chars): {len(prompt)}")
+            if system_prompt:
+                main_logger.error(f"  - System prompt length (chars): {len(system_prompt)}")
+            if history_messages:
+                main_logger.error(f"  - History messages: {len(history_messages)} messages")
+            main_logger.error(f"  - Actual total tokens (tiktoken): {estimated_tokens}")
+            
+            # Provide suggestions
+            main_logger.error("Suggestions:")
+            main_logger.error("  1. Check if the model's context window is large enough")
+            main_logger.error("  2. Reduce the prompt or system prompt length")
+            main_logger.error("  3. Clear history messages if they're too long")
+            main_logger.error("  4. Switch to a model with a larger context window")
+        
+        main_logger.error(f"=== End Error Details ===")
         main_logger.error(t('llm_call_failed', error=str(e)))
         raise
 
@@ -828,8 +940,8 @@ class QueryModel(BaseModel):
     mode: str = "hyper"  # hyper, hyper-lite, naive
     top_k: int = 60
     max_token_for_text_unit: int = 1600
-    max_token_for_entity_context: int = 300
-    max_token_for_relation_context: int = 1600
+    max_token_for_entity_context: int = 300 
+    max_token_for_relation_context: int = 1600 
     only_need_context: bool = False
     response_type: str = "Multiple Paragraphs"
     database: str = None  # 添加数据库参数
@@ -984,6 +1096,9 @@ class FileEmbedRequest(BaseModel):
     chunk_overlap: int = 200
     database: str = None  # Add database parameter
 
+class BulkDeleteRequest(BaseModel):
+    file_ids: List[str]
+
 @app.get("/files")
 async def get_files():
     """
@@ -1059,6 +1174,53 @@ async def delete_file(file_id: str):
             raise HTTPException(status_code=404, detail=t('file_not_exist'))
     except Exception as e:
         raise HTTPException(status_code=500, detail=t('file_delete_failed', error=str(e)))
+
+@app.post("/files/delete-bulk")
+async def delete_files_bulk(request: BulkDeleteRequest):
+    """
+    Delete multiple files at once
+    批量删除多个文件
+    """
+    try:
+        success_count = 0
+        failed_count = 0
+        failed_files = []
+        
+        for file_id in request.file_ids:
+            try:
+                if file_manager.delete_file(file_id):
+                    success_count += 1
+                else:
+                    failed_count += 1
+                    failed_files.append(file_id)
+            except Exception as e:
+                failed_count += 1
+                failed_files.append(file_id)
+                main_logger.error(f"Failed to delete file {file_id}: {str(e)}")
+        
+        if success_count > 0 and failed_count == 0:
+            return {
+                "success": True, 
+                "message": f"Successfully deleted {success_count} file(s)",
+                "deleted_count": success_count
+            }
+        elif success_count > 0 and failed_count > 0:
+            return {
+                "success": True,
+                "message": f"Deleted {success_count} file(s), failed to delete {failed_count} file(s)",
+                "deleted_count": success_count,
+                "failed_count": failed_count,
+                "failed_files": failed_files
+            }
+        else:
+            return {
+                "success": False,
+                "message": "Failed to delete all files",
+                "failed_count": failed_count,
+                "failed_files": failed_files
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk delete operation failed: {str(e)}")
 
 @app.post("/files/embed")
 async def embed_files(request: FileEmbedRequest):
