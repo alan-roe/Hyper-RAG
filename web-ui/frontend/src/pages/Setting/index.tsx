@@ -108,9 +108,9 @@ const Setting: React.FC = () => {
       value: 'custom',
       label: t('settings.custom_api'),
       models: ['custom-model'],
-      defaultBaseUrl: 'http://localhost:11434',
-      defaultEmbeddingModel: 'text-embedding-3-small',
-      defaultEmbeddingDim: 1536
+      defaultBaseUrl: 'http://localhost:1234',
+      defaultEmbeddingModel: 'nomic-ai/nomic-embed-text-v2-moe-GGUF',
+      defaultEmbeddingDim: 768
     }
   ]
 
