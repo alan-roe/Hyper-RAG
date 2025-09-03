@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { observer } from 'mobx-react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import {
     MessageCircle,
     Send,
@@ -652,6 +653,7 @@ return
                                                         <div className="flex-1 flex flex-col">
                                                             <div className="flex-1 prose prose-sm">
                                                                 <ReactMarkdown
+                                                                    remarkPlugins={[remarkGfm]}
                                                                     components={{
                                                                         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                                                                         code: ({ children, className }) => (
@@ -663,6 +665,34 @@ return
                                                                             <pre className="bg-blue-100 p-3 rounded-md overflow-x-auto">
                                                                                 {children}
                                                                             </pre>
+                                                                        ),
+                                                                        table: ({ children }) => (
+                                                                            <table className="min-w-full divide-y divide-gray-200 my-4">
+                                                                                {children}
+                                                                            </table>
+                                                                        ),
+                                                                        thead: ({ children }) => (
+                                                                            <thead className="bg-gray-50">
+                                                                                {children}
+                                                                            </thead>
+                                                                        ),
+                                                                        tbody: ({ children }) => (
+                                                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                                                {children}
+                                                                            </tbody>
+                                                                        ),
+                                                                        tr: ({ children }) => (
+                                                                            <tr>{children}</tr>
+                                                                        ),
+                                                                        th: ({ children }) => (
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                {children}
+                                                                            </th>
+                                                                        ),
+                                                                        td: ({ children }) => (
+                                                                            <td className="px-4 py-2 text-sm text-gray-900">
+                                                                                {children}
+                                                                            </td>
                                                                         ),
                                                                     }}
                                                                 >
@@ -717,6 +747,7 @@ return
                                                         <div className="flex-1 flex flex-col">
                                                             <div className="flex-1 prose prose-sm">
                                                                 <ReactMarkdown
+                                                                    remarkPlugins={[remarkGfm]}
                                                                     components={{
                                                                         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                                                                         code: ({ children, className }) => (
@@ -728,6 +759,34 @@ return
                                                                             <pre className="bg-green-100 p-3 rounded-md overflow-x-auto">
                                                                                 {children}
                                                                             </pre>
+                                                                        ),
+                                                                        table: ({ children }) => (
+                                                                            <table className="min-w-full divide-y divide-gray-200 my-4">
+                                                                                {children}
+                                                                            </table>
+                                                                        ),
+                                                                        thead: ({ children }) => (
+                                                                            <thead className="bg-gray-50">
+                                                                                {children}
+                                                                            </thead>
+                                                                        ),
+                                                                        tbody: ({ children }) => (
+                                                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                                                {children}
+                                                                            </tbody>
+                                                                        ),
+                                                                        tr: ({ children }) => (
+                                                                            <tr>{children}</tr>
+                                                                        ),
+                                                                        th: ({ children }) => (
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                {children}
+                                                                            </th>
+                                                                        ),
+                                                                        td: ({ children }) => (
+                                                                            <td className="px-4 py-2 text-sm text-gray-900">
+                                                                                {children}
+                                                                            </td>
                                                                         ),
                                                                     }}
                                                                 >
@@ -771,6 +830,7 @@ return
                                                         <div className='flex'>
                                                             <div className="flex-1 prose prose-sm z-0">
                                                                 <ReactMarkdown
+                                                                    remarkPlugins={[remarkGfm]}
                                                                     components={{
                                                                         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                                                                         code: ({ children, className }) => (
@@ -782,6 +842,34 @@ return
                                                                             <pre className="bg-gray-100 p-3 rounded-md overflow-x-auto">
                                                                                 {children}
                                                                             </pre>
+                                                                        ),
+                                                                        table: ({ children }) => (
+                                                                            <table className="min-w-full divide-y divide-gray-200 my-4">
+                                                                                {children}
+                                                                            </table>
+                                                                        ),
+                                                                        thead: ({ children }) => (
+                                                                            <thead className="bg-gray-50">
+                                                                                {children}
+                                                                            </thead>
+                                                                        ),
+                                                                        tbody: ({ children }) => (
+                                                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                                                {children}
+                                                                            </tbody>
+                                                                        ),
+                                                                        tr: ({ children }) => (
+                                                                            <tr>{children}</tr>
+                                                                        ),
+                                                                        th: ({ children }) => (
+                                                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                {children}
+                                                                            </th>
+                                                                        ),
+                                                                        td: ({ children }) => (
+                                                                            <td className="px-4 py-2 text-sm text-gray-900">
+                                                                                {children}
+                                                                            </td>
                                                                         ),
                                                                     }}
                                                                 >
