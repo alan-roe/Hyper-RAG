@@ -1,0 +1,21 @@
+{
+  "$schema": "https://gofastmcp.com/fastmcp.schema.json",
+  "source": {
+    "path": "mcp_server.py",
+    "entrypoint": "mcp"
+  },
+  "environment": {
+    "type": "uv",
+    "requirements": [
+      "fastmcp>=1.0.0",
+      "pydantic>=2.0.0"
+    ]
+  },
+  "deploy": {
+    "name": "hyperrag-context",
+    "description": "HyperRAG Context Retrieval Server - Query hypergraph databases for enriched context",
+    "transport": {
+      "type": "stdio"
+    }
+  }
+}
