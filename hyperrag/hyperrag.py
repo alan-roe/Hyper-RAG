@@ -60,7 +60,6 @@ class HyperRAG:
     working_dir: str = field(
         default_factory=lambda: f"./HyperRAG_cache_{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
     )
-    print(working_dir)
 
     current_log_level = logger.level
     log_level: str = field(default=current_log_level)
