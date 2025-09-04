@@ -2,6 +2,130 @@ GRAPH_FIELD_SEP = "<SEP>"
 
 PROMPTS = {}
 
+def get_entity_extraction_examples(use_structured_output=False, tuple_delimiter=" | ", record_delimiter="\n", completion_delimiter="<|COMPLETE|>"):
+    """
+    Generate entity extraction examples in appropriate format.
+    
+    Args:
+        use_structured_output: If True, return JSON format examples for structured output
+        tuple_delimiter: Delimiter for tuple format (used when not structured)
+        record_delimiter: Delimiter between records (used when not structured)
+        completion_delimiter: Completion marker (used when not structured)
+    
+    Returns:
+        String containing formatted examples
+    """
+    if use_structured_output:
+        # JSON format for structured output
+        return """Example 1:
+
+Entity_types: [organization, person, geo, event, role, concept]
+Text:
+while Alex clenched his jaw, the buzz of frustration dull against the backdrop of Taylor's authoritarian certainty. It was this competitive undercurrent that kept him alert, the sense that his and Jordan's shared commitment to discovery was an unspoken rebellion against Cruz's narrowing vision of control and order.
+
+Then Taylor did something unexpected. They paused beside Jordan and, for a moment, observed the device with something akin to reverence. "If this tech can be understood..." Taylor said, their voice quieter, "It could change the game for us. For all of us."
+
+The underlying dismissal earlier seemed to falter, replaced by a glimpse of reluctant respect for the gravity of what lay in their hands. Jordan looked up, and for a fleeting heartbeat, their eyes locked with Taylor's, a wordless clash of wills softening into an uneasy truce.
+
+It was a small transformation, barely perceptible, but one that Alex noted with an inward nod. They had all been brought here by different paths
+################
+Output:
+{
+  "entities": [
+    {
+      "entity_name": "Alex",
+      "entity_type": "person",
+      "entity_description": "Alex is a character displaying frustration and a competitive spirit, particularly in relation to his colleagues Taylor and Jordan. His commitment to discovery implies a desire for progression and innovation, contrasting with some characters' more controlling tendencies.",
+      "additional_properties": "time: present, emotion: frustration, motivation: commitment to discovery"
+    },
+    {
+      "entity_name": "Taylor",
+      "entity_type": "person",
+      "entity_description": "Taylor is presented as an authoritative figure whose initial dismissal of others' contributions begins to soften into respect, especially towards the technological device they are observing. Their behavior signifies complexity in leadership that includes moments of collaboration.",
+      "additional_properties": "time: present, space: technology observation, emotion: reluctant respect"
+    },
+    {
+      "entity_name": "Jordan",
+      "entity_type": "person",
+      "entity_description": "Jordan shares a commitment to discovery with Alex, acting as a bridge between the competitive spirits of Alex and Taylor. Their interaction implies a role of mediation and connection in professional dynamics.",
+      "additional_properties": "time: present, emotion: shared commitment"
+    },
+    {
+      "entity_name": "Cruz",
+      "entity_type": "person",
+      "entity_description": "Cruz represents an opposing force with a 'narrowing vision' of control, contrasting with the desire for discovery and innovation expressed by Alex and Jordan. They embody limitations placed on creative progress.",
+      "additional_properties": "time: present, emotion: control"
+    },
+    {
+      "entity_name": "device",
+      "entity_type": "concept",
+      "entity_description": "The device observed by the characters symbolizes potential innovation and change; it represents the idea that technology can transform the existing paradigms of work and authority, eliciting complex emotional and intellectual responses from the characters.",
+      "additional_properties": "emotion: potential, motivation: change"
+    }
+  ],
+  "low_order_hyperedges": [
+    {
+      "entity1": "Alex",
+      "entity2": "Taylor",
+      "description": "Alex's frustration with Taylor's authority and competitive nature showcases the emotional undercurrents in their relationship, indicating a tension between rebellion and control.",
+      "keywords": ["tension", "competitive nature"],
+      "strength": 0.7
+    },
+    {
+      "entity1": "Jordan",
+      "entity2": "Taylor",
+      "description": "Jordan's moment of eye contact with Taylor suggests a temporary truce and respect regarding the potential of the device, indicating an evolving dynamic away from authority.",
+      "keywords": ["truce", "respect", "collaboration"],
+      "strength": 0.6
+    },
+    {
+      "entity1": "Alex",
+      "entity2": "Jordan",
+      "description": "Alex and Jordan's shared commitment to discovery highlights their camaraderie and rebellion against Cruz's control, creating a bond based on innovation and mutual goals.",
+      "keywords": ["camaraderie", "innovation"],
+      "strength": 0.8
+    }
+  ],
+  "high_level_keywords": ["innovation", "authority", "tension", "collaboration", "technology"],
+  "high_order_hyperedges": [
+    {
+      "entities": ["Alex", "Jordan", "Taylor"],
+      "description": "The connection between Alex, Jordan, and Taylor illustrates a complex interplay of authority, collaboration, and shared goals for innovation, framed against the backdrop of controlling influences like Cruz. Their dynamics suggest a gradual shift from conflict toward potential cooperation.",
+      "generalization": "innovation and authority dynamics, collaboration for change",
+      "keywords": ["authority", "collaboration", "innovation"],
+      "strength": 0.8
+    }
+  ]
+}
+#############################"""
+    else:
+        # Traditional tuple format
+        return f"""Example 1:
+
+Entity_types: [organization, person, geo, event, role, concept]
+Text:
+while Alex clenched his jaw, the buzz of frustration dull against the backdrop of Taylor's authoritarian certainty. It was this competitive undercurrent that kept him alert, the sense that his and Jordan's shared commitment to discovery was an unspoken rebellion against Cruz's narrowing vision of control and order.
+
+Then Taylor did something unexpected. They paused beside Jordan and, for a moment, observed the device with something akin to reverence. "If this tech can be understood..." Taylor said, their voice quieter, "It could change the game for us. For all of us."
+
+The underlying dismissal earlier seemed to falter, replaced by a glimpse of reluctant respect for the gravity of what lay in their hands. Jordan looked up, and for a fleeting heartbeat, their eyes locked with Taylor's, a wordless clash of wills softening into an uneasy truce.
+
+It was a small transformation, barely perceptible, but one that Alex noted with an inward nod. They had all been brought here by different paths
+################
+Output:
+("Entity"{tuple_delimiter}Alex{tuple_delimiter}person{tuple_delimiter}Alex is a character displaying frustration and a competitive spirit, particularly in relation to his colleagues Taylor and Jordan. His commitment to discovery implies a desire for progression and innovation, contrasting with some characters' more controlling tendencies.{tuple_delimiter}time: present, emotion: frustration, motivation: commitment to discovery){record_delimiter}
+("Entity"{tuple_delimiter}Taylor{tuple_delimiter}person{tuple_delimiter}Taylor is presented as an authoritative figure whose initial dismissal of others' contributions begins to soften into respect, especially towards the technological device they are observing. Their behavior signifies complexity in leadership that includes moments of collaboration.{tuple_delimiter}time: present, space: technology observation, emotion: reluctant respect){record_delimiter}
+("Entity"{tuple_delimiter}Jordan{tuple_delimiter}person{tuple_delimiter}Jordan shares a commitment to discovery with Alex, acting as a bridge between the competitive spirits of Alex and Taylor. Their interaction implies a role of mediation and connection in professional dynamics.{tuple_delimiter}time: present, emotion: shared commitment){record_delimiter}
+("Entity"{tuple_delimiter}Cruz{tuple_delimiter}person{tuple_delimiter}Cruz represents an opposing force with a 'narrowing vision' of control, contrasting with the desire for discovery and innovation expressed by Alex and Jordan. They embody limitations placed on creative progress.{tuple_delimiter}time: present, emotion: control){record_delimiter}
+("Entity"{tuple_delimiter}device{tuple_delimiter}concept{tuple_delimiter}The device observed by the characters symbolizes potential innovation and change; it represents the idea that technology can transform the existing paradigms of work and authority, eliciting complex emotional and intellectual responses from the characters.{tuple_delimiter}emotion: potential, motivation: change){record_delimiter}
+("Entity"{tuple_delimiter}authoritarian certainty{tuple_delimiter}concept{tuple_delimiter}Authoritarian certainty refers to the rigid and commanding demeanor showcased especially by Taylor at the start of the scene, which creates tension against the more innovative and rebellious attitudes of others.{tuple_delimiter}emotion: tension, motivation: control){record_delimiter}
+("Low-order Hyperedge"{tuple_delimiter}Alex{tuple_delimiter}Taylor{tuple_delimiter}Alex's frustration with Taylor's authority and competitive nature showcases the emotional undercurrents in their relationship, indicating a tension between rebellion and control.{tuple_delimiter}tension, competitive nature{tuple_delimiter}7){record_delimiter}
+("Low-order Hyperedge"{tuple_delimiter}Jordan{tuple_delimiter}Taylor{tuple_delimiter}Jordan's moment of eye contact with Taylor suggests a temporary truce and respect regarding the potential of the device, indicating an evolving dynamic away from authority.{tuple_delimiter}truce, respect, collaboration{tuple_delimiter}6){record_delimiter}
+("Low-order Hyperedge"{tuple_delimiter}Alex{tuple_delimiter}Jordan{tuple_delimiter}Alex and Jordan's shared commitment to discovery highlights their camaraderie and rebellion against Cruz's control, creating a bond based on innovation and mutual goals.{tuple_delimiter}camaraderie, innovation{tuple_delimiter}8){record_delimiter}
+("High-level keywords"{tuple_delimiter}innovation, authority, tension, collaboration, technology){record_delimiter}
+("High-order Hyperedge"{tuple_delimiter}Alex{tuple_delimiter}Jordan{tuple_delimiter}Taylor{tuple_delimiter}The connection between Alex, Jordan, and Taylor illustrates a complex interplay of authority, collaboration, and shared goals for innovation, framed against the backdrop of controlling influences like Cruz. Their dynamics suggest a gradual shift from conflict toward potential cooperation.{tuple_delimiter}innovation and authority dynamics, collaboration for change{tuple_delimiter}authority, collaboration, innovation{tuple_delimiter}8){completion_delimiter}
+#############################"""
+
 PROMPTS["DEFAULT_LANGUAGE"] = 'English'
 PROMPTS["DEFAULT_TUPLE_DELIMITER"] = " | "
 PROMPTS["DEFAULT_RECORD_DELIMITER"] = "\n"
@@ -70,33 +194,15 @@ Text: {input_text}
 Output:
 """
 
+# Note: Entity extraction examples are now generated dynamically by get_entity_extraction_examples()
+# This allows conditional formatting based on whether structured output is enabled
+
+# For backward compatibility, keep a reference to example indices
+PROMPTS["entity_extraction_example_indices"] = [0, 1, 2, 3]  # Available example indices
+
+# Legacy examples for reference (deprecated - use get_entity_extraction_examples instead)
 PROMPTS["entity_extraction_examples"] = [
     """Example 1:
-
-Entity_types: [organization, person, geo, event, role, concept]
-Text:
-while Alex clenched his jaw, the buzz of frustration dull against the backdrop of Taylor's authoritarian certainty. It was this competitive undercurrent that kept him alert, the sense that his and Jordan's shared commitment to discovery was an unspoken rebellion against Cruz's narrowing vision of control and order.
-
-Then Taylor did something unexpected. They paused beside Jordan and, for a moment, observed the device with something akin to reverence. “If this tech can be understood..." Taylor said, their voice quieter, "It could change the game for us. For all of us.”
-
-The underlying dismissal earlier seemed to falter, replaced by a glimpse of reluctant respect for the gravity of what lay in their hands. Jordan looked up, and for a fleeting heartbeat, their eyes locked with Taylor's, a wordless clash of wills softening into an uneasy truce.
-
-It was a small transformation, barely perceptible, but one that Alex noted with an inward nod. They had all been brought here by different paths
-################
-Output:
-("Entity"{tuple_delimiter}Alex{tuple_delimiter}person{tuple_delimiter}Alex is a character displaying frustration and a competitive spirit, particularly in relation to his colleagues Taylor and Jordan. His commitment to discovery implies a desire for progression and innovation, contrasting with some characters' more controlling tendencies.{tuple_delimiter}time: present, emotion: frustration, motivation: commitment to discovery){record_delimiter}
-("Entity"{tuple_delimiter}Taylor{tuple_delimiter}person{tuple_delimiter}Taylor is presented as an authoritative figure whose initial dismissal of others' contributions begins to soften into respect, especially towards the technological device they are observing. Their behavior signifies complexity in leadership that includes moments of collaboration.{tuple_delimiter}time: present, space: technology observation, emotion: reluctant respect){record_delimiter}
-("Entity"{tuple_delimiter}Jordan{tuple_delimiter}person{tuple_delimiter}Jordan shares a commitment to discovery with Alex, acting as a bridge between the competitive spirits of Alex and Taylor. Their interaction implies a role of mediation and connection in professional dynamics.{tuple_delimiter}time: present, emotion: shared commitment){record_delimiter}
-("Entity"{tuple_delimiter}Cruz{tuple_delimiter}person{tuple_delimiter}Cruz represents an opposing force with a 'narrowing vision' of control, contrasting with the desire for discovery and innovation expressed by Alex and Jordan. They embody limitations placed on creative progress.{tuple_delimiter}time: present, emotion: control){record_delimiter}
-("Entity"{tuple_delimiter}device{tuple_delimiter}concept{tuple_delimiter}The device observed by the characters symbolizes potential innovation and change; it represents the idea that technology can transform the existing paradigms of work and authority, eliciting complex emotional and intellectual responses from the characters.{tuple_delimiter}emotion: potential, motivation: change){record_delimiter}
-("Entity"{tuple_delimiter}authoritarian certainty{tuple_delimiter}concept{tuple_delimiter}Authoritarian certainty refers to the rigid and commanding demeanor showcased especially by Taylor at the start of the scene, which creates tension against the more innovative and rebellious attitudes of others.{tuple_delimiter}emotion: tension, motivation: control){record_delimiter}
-("Low-order Hyperedge"{tuple_delimiter}Alex{tuple_delimiter}Taylor{tuple_delimiter}Alex's frustration with Taylor's authority and competitive nature showcases the emotional undercurrents in their relationship, indicating a tension between rebellion and control.{tuple_delimiter}tension, competitive nature{tuple_delimiter}7){record_delimiter}
-("Low-order Hyperedge"{tuple_delimiter}Jordan{tuple_delimiter}Taylor{tuple_delimiter}Jordan's moment of eye contact with Taylor suggests a temporary truce and respect regarding the potential of the device, indicating an evolving dynamic away from authority.{tuple_delimiter}truce, respect, collaboration{tuple_delimiter}6){record_delimiter}
-("Low-order Hyperedge"{tuple_delimiter}Alex{tuple_delimiter}Jordan{tuple_delimiter}Alex and Jordan's shared commitment to discovery highlights their camaraderie and rebellion against Cruz's control, creating a bond based on innovation and mutual goals.{tuple_delimiter}camaraderie, innovation{tuple_delimiter}8){record_delimiter}
-("High-level keywords"{tuple_delimiter}innovation, authority, tension, collaboration, technology){record_delimiter}
-("High-order Hyperedge"{tuple_delimiter}Alex{tuple_delimiter}Jordan{tuple_delimiter}Taylor{tuple_delimiter}The connection between Alex, Jordan, and Taylor illustrates a complex interplay of authority, collaboration, and shared goals for innovation, framed against the backdrop of controlling influences like Cruz. Their dynamics suggest a gradual shift from conflict toward potential cooperation.{tuple_delimiter}innovation and authority dynamics, collaboration for change{tuple_delimiter}authority, collaboration, innovation{tuple_delimiter}8){completion_delimiter}
-#############################""",
-    """Example 2:
 
 Entity_types: [person, technology, mission, organization, location]
 Text:

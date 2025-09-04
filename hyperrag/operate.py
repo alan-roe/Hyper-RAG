@@ -418,13 +418,25 @@ async def extract_entities(
 
     entity_extract_prompt = PROMPTS["entity_extraction"]
     # We can choose the example what we want from the prompt.
-    example_base = dict(
+    # Check if structured output is enabled by checking if we have the smart wrapper
+    use_llm_func = global_config["llm_model_func"]
+    use_structured_output = False
+    
+    # Check if this is the smart wrapper with structured output support
+    if hasattr(use_llm_func, 'wrapper'):
+        # This is the smart wrapper, check its settings
+        use_structured_output = use_llm_func.wrapper.use_structured
+    
+    from .prompt import get_entity_extraction_examples
+    
+    # Get the appropriate examples based on structured output setting
+    # Using example index 3 for consistency with original behavior
+    example_str = get_entity_extraction_examples(
+        use_structured_output=use_structured_output,
         tuple_delimiter=PROMPTS["DEFAULT_TUPLE_DELIMITER"],
         record_delimiter=PROMPTS["DEFAULT_RECORD_DELIMITER"],
         completion_delimiter=PROMPTS["DEFAULT_COMPLETION_DELIMITER"]
     )
-    example_prompt = PROMPTS["entity_extraction_examples"][3]
-    example_str = example_prompt.format(**example_base)
 
     context_base = dict(
         language=PROMPTS["DEFAULT_LANGUAGE"],

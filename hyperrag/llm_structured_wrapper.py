@@ -8,7 +8,7 @@ import os
 from typing import Optional, Type, Union, Dict, Any
 from pydantic import BaseModel
 from .llm import openai_complete_if_cache, openai_complete_with_structured_output
-from .structured_outputs import KeywordExtractionResponse, EntityExtractionResponse
+from .structured_outputs import KeywordExtractionResponse, EntityExtractionResponse, convert_to_legacy_format
 from .utils import logger
 
 
@@ -200,6 +200,10 @@ def create_smart_llm_func(settings: Dict[str, Any]):
             if "keywords_extraction" in prompt or ("high_level_keywords" in prompt and "low_level_keywords" in prompt):
                 response_model = KeywordExtractionResponse
                 logger.debug("Detected keyword extraction request")
+            elif ("Entity" in prompt and "Low-order Hyperedge" in prompt and "High-order Hyperedge" in prompt) or \
+                 ("entity_extraction" in prompt and "entity_name" in prompt):
+                response_model = EntityExtractionResponse
+                logger.debug("Detected entity extraction request")
             
             if response_model:
                 try:
@@ -211,8 +215,11 @@ def create_smart_llm_func(settings: Dict[str, Any]):
                         **kwargs
                     )
                     
-                    # Convert structured result back to JSON string for compatibility
-                    if isinstance(result, BaseModel):
+                    # Convert structured result back to appropriate format for compatibility
+                    if isinstance(result, EntityExtractionResponse):
+                        # Convert entity extraction to legacy tuple format for backward compatibility
+                        return convert_to_legacy_format(result)
+                    elif isinstance(result, BaseModel):
                         return result.model_dump_json()
                     return result
                 except Exception as e:
