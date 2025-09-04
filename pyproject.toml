@@ -3,7 +3,7 @@ name = "hyper-rag"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "accelerate>=1.10.1",
     "aioboto3>=15.1.0",
@@ -30,4 +30,5 @@ dependencies = [
     "aiolimiter>=1.2.1",
     "sentence-transformers>=5.1.0",
     "einops>=0.8.1",
+    "fastmcp>=2.12.2",
 ]
