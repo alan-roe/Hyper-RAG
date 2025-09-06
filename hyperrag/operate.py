@@ -1088,11 +1088,17 @@ async def hyper_query(
     entity_context = None
     relation_context = None
     use_model_func = global_config["llm_model_func"]
+    max_tokens = global_config.get("max_tokens")
 
     kw_prompt_temp = PROMPTS["keywords_extraction"]
     kw_prompt = kw_prompt_temp.format(query=query)
 
-    result = await use_model_func(kw_prompt)
+    # Pass max_tokens if specified
+    llm_kwargs = {}
+    if max_tokens is not None:
+        llm_kwargs["max_tokens"] = max_tokens
+    
+    result = await use_model_func(kw_prompt, **llm_kwargs)
 
     try:
         keywords_data = json.loads(result)
@@ -1158,6 +1164,8 @@ async def hyper_query(
     }
 
     if query_param.only_need_context:
+        if query_param.return_type == "json":
+            return contextJson
         return context
     if context is None:
         return PROMPTS["fail_response"]
@@ -1177,6 +1185,7 @@ async def hyper_query(
     response = await use_model_func(
         query + define_str,
         system_prompt=sys_prompt,
+        **llm_kwargs
     )
     if len(response) > len(sys_prompt):
         response = (
@@ -1205,11 +1214,17 @@ async def hyper_query_lite(
 
     entity_context = None
     use_model_func = global_config["llm_model_func"]
+    max_tokens = global_config.get("max_tokens")
 
     kw_prompt_temp = PROMPTS["keywords_extraction"]
     kw_prompt = kw_prompt_temp.format(query=query)
 
-    result = await use_model_func(kw_prompt)
+    # Pass max_tokens if specified
+    llm_kwargs = {}
+    if max_tokens is not None:
+        llm_kwargs["max_tokens"] = max_tokens
+    
+    result = await use_model_func(kw_prompt, **llm_kwargs)
 
     try:
         keywords_data = json.loads(result)
@@ -1254,6 +1269,8 @@ async def hyper_query_lite(
     context = entity_context.get("context")
 
     if query_param.only_need_context:
+        if query_param.return_type == "json":
+            return entity_context
         return context
     if context is None:
         return PROMPTS["fail_response"]
@@ -1272,6 +1289,7 @@ async def hyper_query_lite(
     response = await use_model_func(
         query + define_str,
         system_prompt=sys_prompt,
+        **llm_kwargs
     )
     if len(response) > len(sys_prompt):
         response = (
@@ -1302,9 +1320,17 @@ async def graph_query(
     检索和返回 hypergraph db 中的成对关系
     """
     use_model_func = global_config["llm_model_func"]
+    max_tokens = global_config.get("max_tokens")
+    
     kw_prompt_temp = PROMPTS["keywords_extraction"]
     kw_prompt = kw_prompt_temp.format(query=query)
-    result = await use_model_func(kw_prompt)
+    
+    # Pass max_tokens if specified
+    llm_kwargs = {}
+    if max_tokens is not None:
+        llm_kwargs["max_tokens"] = max_tokens
+    
+    result = await use_model_func(kw_prompt, **llm_kwargs)
     try:
         keywords_data = json.loads(result)
         entity_keywords = keywords_data.get("low_level_keywords", [])
@@ -1485,6 +1511,8 @@ async def graph_query(
             ]
         }
         if query_param.only_need_context:
+            if query_param.return_type == "json":
+                return contextJson
             return context_string
         if context_string is None:
             return PROMPTS["fail_response"]
@@ -1501,6 +1529,7 @@ async def graph_query(
         response = await use_model_func(
             query + define_str,
             system_prompt=sys_prompt,
+            **llm_kwargs
         )
         if len(response) > len(sys_prompt):
             response = (
@@ -1603,6 +1632,13 @@ async def naive_query(
     global_config: dict,
 ):
     use_model_func = global_config["llm_model_func"]
+    max_tokens = global_config.get("max_tokens")
+    
+    # Pass max_tokens if specified
+    llm_kwargs = {}
+    if max_tokens is not None:
+        llm_kwargs["max_tokens"] = max_tokens
+    
     results = await chunks_vdb.query(query, top_k=query_param.top_k)
     if not len(results):
         return PROMPTS["fail_response"]
@@ -1617,6 +1653,19 @@ async def naive_query(
     logger.info(f"Truncate {len(chunks)} to {len(maybe_trun_chunks)} chunks")
     section = "--New Chunk--\n".join([c["content"] for c in maybe_trun_chunks])
     if query_param.only_need_context:
+        if query_param.return_type == "json":
+            return {
+                "context": section,
+                "text_units": [
+                    {
+                        "id": i,
+                        "content": c["content"]
+                    }
+                    for i, c in enumerate(maybe_trun_chunks)
+                ],
+                "entities": [],
+                "hyperedges": []
+            }
         return section
     sys_prompt_temp = PROMPTS["naive_rag_response"]
     sys_prompt = sys_prompt_temp.format(
@@ -1625,6 +1674,7 @@ async def naive_query(
     response = await use_model_func(
         query,
         system_prompt=sys_prompt,
+        **llm_kwargs
     )
 
     if len(response) > len(sys_prompt):
@@ -1654,6 +1704,13 @@ async def llm_query(
     只调用 LLM，不进行任何数据查询。
     """
     use_model_func = global_config["llm_model_func"]
+    max_tokens = global_config.get("max_tokens")
+    
+    # Pass max_tokens if specified
+    llm_kwargs = {}
+    if max_tokens is not None:
+        llm_kwargs["max_tokens"] = max_tokens
+    
     sys_prompt_temp = PROMPTS["rag_response"]
     sys_prompt = sys_prompt_temp.format(
         context_data="", response_type=query_param.response_type
@@ -1661,6 +1718,7 @@ async def llm_query(
     response = await use_model_func(
         query,
         system_prompt=sys_prompt,
+        **llm_kwargs
     )
     if len(response) > len(sys_prompt):
         response = (
