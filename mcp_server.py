@@ -162,7 +162,7 @@ async def list_databases() -> List[str]:
 
 
 @mcp.tool
-async def query_context(query: str, database: str) -> Dict:
+async def query_context(query: str, database: str, max_tokens, mode: str = None, top_k: int = None) -> Dict:
     """
     Query a HyperRAG database for enriched context
     
@@ -172,6 +172,9 @@ async def query_context(query: str, database: str) -> Dict:
     Args:
         query: The question or query to search for context
         database: The name of the database to query
+        max_tokens: Maximum tokens for context (controls retrieval size)
+        mode: Optional retrieval mode ('hyper', 'hyper-lite', 'graph', 'naive')
+        top_k: Optional number of top results to retrieve
     
     Returns:
         Dictionary containing the enriched context with entities, 
@@ -181,28 +184,68 @@ async def query_context(query: str, database: str) -> Dict:
         # Get or create HyperRAG instance
         rag = get_or_create_hyperrag(database)
         
-        # Create query parameters
+        # Dynamically adjust parameters based on max_tokens to prevent huge responses
+        # Convert max_tokens to int if it's a string
+        if max_tokens is not None:
+            try:
+                max_tokens = int(max_tokens)
+            except (ValueError, TypeError):
+                max_tokens = 4000  # Default if conversion fails
+        else:
+            max_tokens = 4000  # Set a reasonable default
+        
+        # Scale parameters based on max_tokens
+        # These ratios help balance the context distribution
+        if max_tokens <= 1000:
+            # Very small context - minimal retrieval
+            default_top_k = 10
+            max_token_for_text = 300
+            max_token_for_entity = 100
+            max_token_for_relation = 300
+            default_mode = "hyper-lite"  # Use lighter mode for small contexts
+        elif max_tokens <= 2000:
+            # Small context - reduced retrieval
+            default_top_k = 20
+            max_token_for_text = 500
+            max_token_for_entity = 150
+            max_token_for_relation = 500
+            default_mode = "hyper-lite"
+        elif max_tokens <= 4000:
+            # Medium context - balanced retrieval
+            default_top_k = 30
+            max_token_for_text = 800
+            max_token_for_entity = 200
+            max_token_for_relation = 800
+            default_mode = "hyper"
+        else:
+            # Large context - fuller retrieval (but still bounded)
+            default_top_k = 40
+            max_token_for_text = 1200
+            max_token_for_entity = 250
+            max_token_for_relation = 1200
+            default_mode = "hyper"
+        
+        # Use provided parameters or defaults
+        final_mode = mode if mode is not None else default_mode
+        final_top_k = top_k if top_k is not None else default_top_k
+        
+        # Create query parameters with scaled values
         param = QueryParam(
-            mode="hyper",  # Use full hypergraph mode by default
-            only_need_context=True,  # Return context without final LLM response
-            top_k=60,
-            max_token_for_text_unit=1600,
-            max_token_for_entity_context=300,
-            max_token_for_relation_context=1600,
-            return_type='json'
+            mode=final_mode,
+            top_k=final_top_k,
+            max_token_for_text_unit=max_token_for_text,
+            max_token_for_entity_context=max_token_for_entity,
+            max_token_for_relation_context=max_token_for_relation
         )
         
-        # Execute query
-        result = await rag.aquery(query, param)
+        # Log the parameters being used for debugging
+        sys.stderr.write(f"Query with max_tokens={max_tokens}, using mode={final_mode}, top_k={final_top_k}\n")
         
-        # Ensure result is in JSON format
-        if isinstance(result, str):
-            try:
-                result = json.loads(result)
-            except json.JSONDecodeError:
-                # If not JSON, wrap in a simple structure
-                result = {"context": result}
+        # Use the new aget_context method to get context without response generation
+        # Pass max_tokens if specified
+        result = await rag.aget_context(query, param, max_tokens)
         
+        # Result should already be in the correct format from aget_context
         return result
         
     except Exception as e:
