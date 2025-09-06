@@ -272,9 +272,84 @@ class HyperRAG:
             tasks.append(cast(StorageNameSpace, storage_inst).index_done_callback())
         await asyncio.gather(*tasks)
 
+    def get_context(self, query: str, param: QueryParam = QueryParam(), max_tokens: int = None):
+        loop = always_get_an_event_loop()
+        return loop.run_until_complete(self.aget_context(query, param, max_tokens))
+    
     def query(self, query: str, param: QueryParam = QueryParam()):
         loop = always_get_an_event_loop()
         return loop.run_until_complete(self.aquery(query, param))
+
+    async def aget_context(self, query: str, param: QueryParam = QueryParam(), max_tokens: int = None):
+        """
+        Get the enriched context for a query without generating the final response.
+        This is useful for integration with external systems that want to handle
+        response generation themselves.
+        
+        Args:
+            query: The query string
+            param: Query parameters
+            max_tokens: Optional max tokens for LLM calls (defaults to model's default if not specified)
+            
+        Returns:
+            Dictionary containing the enriched context with entities, relationships, and text units
+        """
+        # Set the parameter to only return context
+        context_param = QueryParam(
+            **{**param.__dict__, "only_need_context": True, "return_type": "json"}
+        )
+        
+        # Get config and add max_tokens if specified
+        config = self._get_serializable_config()
+        if max_tokens is not None:
+            config = {**config, "max_tokens": max_tokens}
+        
+        # Get context based on mode
+        if param.mode == "hyper":
+            context = await hyper_query(
+                query,
+                self.chunk_entity_relation_hypergraph,
+                self.entities_vdb,
+                self.relationships_vdb,
+                self.text_chunks,
+                context_param,
+                config,
+            )
+        elif param.mode == "hyper-lite":
+            context = await hyper_query_lite(
+                query,
+                self.chunk_entity_relation_hypergraph,
+                self.entities_vdb,
+                self.text_chunks,
+                context_param,
+                config,
+            )
+        elif param.mode == "graph":
+            context = await graph_query(
+                query,
+                self.chunk_entity_relation_hypergraph,
+                self.entities_vdb,
+                self.relationships_vdb,
+                self.text_chunks,
+                context_param,
+                config,
+            )
+        elif param.mode == "naive":
+            context = await naive_query(
+                query,
+                self.chunks_vdb,
+                self.text_chunks,
+                context_param,
+                config,
+            )
+        elif param.mode == "llm":
+            # LLM mode doesn't have context, just returns a response
+            raise ValueError("LLM mode does not support context-only queries")
+        else:
+            raise ValueError(f"Unknown mode {param.mode}")
+            
+        await self._query_done()
+        return context
 
     async def aquery(self, query: str, param: QueryParam = QueryParam()):
         
