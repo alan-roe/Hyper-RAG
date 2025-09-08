@@ -12,10 +12,12 @@ from enum import Enum
 class KeywordExtractionResponse(BaseModel):
     """Structured response for keyword extraction from queries"""
     high_level_keywords: List[str] = Field(
-        description="Overarching concepts or themes in the query"
+        description="Overarching concepts or themes in the query",
+        min_items=1,
     )
     low_level_keywords: List[str] = Field(
-        description="Specific entities, details, or concrete terms in the query"
+        description="Specific entities, details, or concrete terms in the query",
+        min_items=1,
     )
 
 
@@ -34,13 +36,16 @@ class EntityType(str, Enum):
 class Entity(BaseModel):
     """Represents an extracted entity"""
     entity_name: str = Field(
-        description="Name of the entity in the same language as input text"
+        description="Name of the entity in the same language as input text",
+        min_items=1,
     )
     entity_type: EntityType = Field(
-        description="Type classification of the entity"
+        description="Type classification of the entity",
+        min_items=1,
     )
     entity_description: str = Field(
-        description="Comprehensive description of the entity's attributes and activities"
+        description="Comprehensive description of the entity's attributes and activities",
+        min_items=1,
     )
     additional_properties: Optional[str] = Field(
         default=None,
@@ -53,14 +58,16 @@ class LowOrderHyperedge(BaseModel):
     entity1: str = Field(description="Name of the first entity")
     entity2: str = Field(description="Name of the second entity")
     description: str = Field(
-        description="Explanation of why these entities are related"
+        description="Explanation of why these entities are related",
+        min_items=1,
     )
     keywords: List[str] = Field(
-        description="Keywords summarizing the relationship nature"
+        description="Keywords summarizing the relationship nature",
+        min_items=1,
     )
     strength: float = Field(
         ge=0.0, le=1.0,
-        description="Numerical score indicating relationship strength (0-1)"
+        description="Numerical score indicating relationship strength (0-1)",
     )
 
 
@@ -68,36 +75,43 @@ class HighOrderHyperedge(BaseModel):
     """Represents complex relationships among multiple entities"""
     entities: List[str] = Field(
         min_items=3,
-        description="Collection of entity names in the high-order association"
+        description="Collection of entity names in the high-order association",
     )
     description: str = Field(
-        description="Detailed description covering all entities in the set"
+        description="Detailed description covering all entities in the set",
+        min_items=1,
     )
     generalization: str = Field(
-        description="Concise summary of the entity set content"
+        description="Concise summary of the entity set content",
+        min_items=1,
     )
     keywords: List[str] = Field(
-        description="Keywords summarizing the high-order association nature"
+        description="Keywords summarizing the high-order association nature",   
+        min_items=1,
     )
     strength: float = Field(
         ge=0.0, le=1.0,
-        description="Numerical score indicating association strength (0-1)"
+        description="Numerical score indicating association strength (0-1)",
     )
 
 
 class EntityExtractionResponse(BaseModel):
     """Complete structured response for entity extraction"""
     entities: List[Entity] = Field(
-        description="All entities identified in the text"
+        description="All entities identified in the text",
+        min_items=1,
     )
     low_order_hyperedges: List[LowOrderHyperedge] = Field(
-        description="Pairwise relationships between entities"
+        description="Pairwise relationships between entities",
+        min_items=1,
     )
     high_level_keywords: List[str] = Field(
-        description="Main ideas, concepts, or themes from the text"
+        description="Main ideas, concepts, or themes from the text",
+        min_items=1,
     )
     high_order_hyperedges: List[HighOrderHyperedge] = Field(
-        description="Complex multi-entity associations"
+        description="Complex multi-entity associations",
+        min_items=1,
     )
 
 
@@ -113,20 +127,29 @@ class SimpleRelation(BaseModel):
     """Simplified relationship for lite mode"""
     entities: List[str] = Field(
         min_items=2,
-        description="Related entity names"
+        description="Related entity names",
     )
     description: str = Field(description="Relationship description")
     weight: float = Field(
         ge=0.0, le=1.0, default=0.75,
-        description="Relationship weight"
+        description="Relationship weight",  
     )
 
 
 class SimplifiedEntityExtractionResponse(BaseModel):
     """Simplified extraction response for lite mode"""
-    entities: List[SimpleEntity]
-    relations: List[SimpleRelation]
-    keywords: List[str]
+    entities: List[SimpleEntity] = Field(
+        description="All entities identified in the text",
+        min_items=1,
+    )
+    relations: List[SimpleRelation] = Field(
+        description="Relationships between entities",
+        min_items=1,
+    )
+    keywords: List[str] = Field(
+        description="Main ideas, concepts, or themes from the text",
+        min_items=1,
+    )
 
 
 # Helper function to convert structured output to the existing format
