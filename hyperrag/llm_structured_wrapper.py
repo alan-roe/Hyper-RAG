@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from .llm import openai_complete_if_cache, openai_complete_with_structured_output
 from .structured_outputs import KeywordExtractionResponse, EntityExtractionResponse, convert_to_legacy_format
 from .utils import logger
+from .logging_utils import log_llm_request, log_llm_response
 
 
 class StructuredLLMWrapper:
@@ -27,6 +28,7 @@ class StructuredLLMWrapper:
         self.settings = settings
         self.use_structured = settings.get("useStructuredOutput", False)
         self.model_name = settings.get("modelName", "gpt-4o")
+        self.model_provider = settings.get("modelProvider", "openai")
         self.base_url = settings.get("baseUrl")
         self.api_key = settings.get("apiKey")
         
@@ -34,7 +36,13 @@ class StructuredLLMWrapper:
         if isinstance(self.api_key, list):
             self.api_key = self.api_key[0] if self.api_key else None
         
-        logger.info(f"StructuredLLMWrapper initialized: structured={self.use_structured}, model={self.model_name}")
+        # Disable structured output for non-OpenAI providers
+        if self.use_structured and (self.model_provider.lower() != "openai" or 
+                                   (self.base_url and "openai" not in self.base_url.lower())):
+            logger.warning(f"Structured output disabled | provider={self.model_provider} | base_url={self.base_url}")
+            self.use_structured = False
+        
+        logger.debug(f"LLM wrapper initialized | structured={self.use_structured} | model={self.model_name} | provider={self.model_provider}")
     
     async def complete(
         self,
@@ -57,6 +65,15 @@ class StructuredLLMWrapper:
         Returns:
             Either a string (traditional) or Pydantic model instance (structured)
         """
+        # Log request in clean format
+        log_llm_request(
+            logger,
+            model=self.model_name,
+            prompt=prompt,
+            structured=self.use_structured,
+            response_model=response_model.__name__ if response_model else None
+        )
+        
         # Merge settings kwargs with call kwargs (call kwargs take precedence)
         final_kwargs = {
             "base_url": self.base_url,
@@ -64,21 +81,33 @@ class StructuredLLMWrapper:
             **kwargs
         }
         
+        # Log kwargs (excluding sensitive data)
+        safe_kwargs = {k: v for k, v in final_kwargs.items() if k not in ['api_key']}
+        logger.debug(f"Request kwargs: {safe_kwargs}")
+        
         # If structured output is enabled and a response model is provided
         if self.use_structured and response_model is not None:
             try:
-                logger.debug(f"Using structured output with model: {response_model.__name__}")
+                logger.debug(f"Attempting structured output | model={response_model.__name__} | provider={self.model_provider}")
+                # Filter out hashing_kv parameter which is not supported by structured output
+                structured_kwargs = {k: v for k, v in final_kwargs.items() if k != 'hashing_kv'}
+                logger.debug(f"Filtered kwargs for structured output: {list(structured_kwargs.keys())}")
+                
                 result = await openai_complete_with_structured_output(
                     model=self.model_name,
                     prompt=prompt,
                     response_model=response_model,
                     system_prompt=system_prompt,
                     history_messages=history_messages,
-                    **final_kwargs
+                    **structured_kwargs
                 )
+                logger.debug(f"Structured output successful | type={type(result).__name__}")
                 return result
             except Exception as e:
-                logger.warning(f"Structured output failed, falling back to traditional: {e}")
+                error_msg = str(e)
+                if "404" in error_msg or "Not Found" in error_msg:
+                    logger.error(f"Structured output not supported | provider={self.model_provider} | base_url={self.base_url} | disable in settings")
+                logger.debug(f"Structured output failed, using traditional | error={str(e)[:100]}")
                 # Fall through to traditional method
         
         # Traditional completion
@@ -91,6 +120,9 @@ class StructuredLLMWrapper:
             **final_kwargs
         )
         
+        # Log response in clean format
+        log_llm_response(logger, result)
+        
         # If a response model was provided, try to parse the JSON
         if response_model is not None:
             try:
@@ -100,14 +132,17 @@ class StructuredLLMWrapper:
                 # Handle common LLM response patterns
                 if "```json" in result:
                     json_str = result.split("```json")[1].split("```")[0]
+                    logger.debug("Extracted JSON from markdown code block")
                 elif "```" in result:
                     json_str = result.split("```")[1].split("```")[0]
+                    logger.debug("Extracted content from code block")
                 
                 # Parse JSON and create model instance
                 data = json.loads(json_str)
+                logger.debug(f"JSON parsed | model={response_model.__name__}")
                 return response_model(**data)
             except (json.JSONDecodeError, ValueError) as e:
-                logger.error(f"Failed to parse response into {response_model.__name__}: {e}")
+                logger.error(f"❌ Failed to parse response into {response_model.__name__}: {e}")
                 logger.debug(f"Raw response: {result[:500]}")
                 # Return raw string if parsing fails
                 return result
@@ -180,6 +215,9 @@ def create_smart_llm_func(settings: Dict[str, Any]):
         This function checks if the prompt is requesting JSON output and uses
         structured output if available and configured.
         """
+        # Only log at debug level with prompt length
+        logger.debug(f"Smart LLM called | prompt_len={len(prompt)}")
+        
         # Check if the prompt is asking for JSON (common patterns)
         json_indicators = [
             "json",
@@ -187,17 +225,30 @@ def create_smart_llm_func(settings: Dict[str, Any]):
             "high_level_keywords",
             "low_level_keywords",
             "entity_extraction",
-            "Format each entity as"
+            "Format each entity as",
+            # Keywords extraction specific patterns
+            "Output the keywords in JSON format",
+            "identifying both high-level and low-level keywords",
+            # Double brace pattern used in prompts
+            "{{"
         ]
         
         # Detect if structured output would be beneficial
         needs_json = any(indicator in prompt for indicator in json_indicators)
         
+        # Log which indicators were checked
+        indicators_found = [ind for ind in json_indicators if ind in prompt]
+        if needs_json:
+            logger.debug(f"JSON output detected | indicators: {indicators_found}")
+        
         if needs_json and wrapper.use_structured:
             # Determine the appropriate response model
             response_model = None
             
-            if "keywords_extraction" in prompt or ("high_level_keywords" in prompt and "low_level_keywords" in prompt):
+            if "keywords_extraction" in prompt or \
+               ("high-level and low-level keywords" in prompt) or \
+               ("Output the keywords in JSON format" in prompt) or \
+               ('"high_level_keywords"' in prompt and '"low_level_keywords"' in prompt):
                 response_model = KeywordExtractionResponse
                 logger.debug("Detected keyword extraction request")
             elif ("Entity" in prompt and "Low-order Hyperedge" in prompt and "High-order Hyperedge" in prompt) or \
@@ -207,6 +258,7 @@ def create_smart_llm_func(settings: Dict[str, Any]):
             
             if response_model:
                 try:
+                    logger.debug(f"Using smart structured output | model={response_model.__name__}")
                     result = await wrapper.complete(
                         prompt=prompt,
                         system_prompt=system_prompt,
@@ -218,14 +270,19 @@ def create_smart_llm_func(settings: Dict[str, Any]):
                     # Convert structured result back to appropriate format for compatibility
                     if isinstance(result, EntityExtractionResponse):
                         # Convert entity extraction to legacy tuple format for backward compatibility
-                        return convert_to_legacy_format(result)
+                        legacy_format = convert_to_legacy_format(result)
+                        logger.debug("Converted EntityExtractionResponse to legacy format")
+                        return legacy_format
                     elif isinstance(result, BaseModel):
-                        return result.model_dump_json()
+                        json_result = result.model_dump_json()
+                        logger.debug(f"Converted to JSON | type={type(result).__name__}")
+                        return json_result
                     return result
                 except Exception as e:
-                    logger.warning(f"Structured output failed: {e}")
+                    logger.warning(f"Smart structured output failed: {e}")
         
         # Fall back to traditional completion
+        logger.debug("Using traditional completion")
         return await wrapper.complete(
             prompt=prompt,
             system_prompt=system_prompt,

@@ -323,6 +323,12 @@ async def openai_complete_with_structured_output(
     Returns:
         Instance of response_model with parsed structured output
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Log the API endpoint being used
+    logger.info(f"🔗 Structured output request - Model: {model}, Base URL: {base_url}")
+    
     if api_key:
         os.environ["OPENAI_API_KEY"] = api_key
     
@@ -330,22 +336,36 @@ async def openai_complete_with_structured_output(
         AsyncOpenAI() if base_url is None else AsyncOpenAI(base_url=base_url)
     )
     
+    # Log the actual URL that will be called
+    actual_base_url = openai_async_client.base_url
+    endpoint_path = "chat/completions"  # beta.chat.completions.parse uses this endpoint
+    full_url = f"{actual_base_url}{endpoint_path}"
+    logger.info(f"📍 Full API URL: {full_url}")
+    
     messages = []
     if system_prompt is not None:
         messages.append({"role": "system", "content": system_prompt})
     messages.extend(history_messages)
     messages.append({"role": "user", "content": prompt})
     
-    # Use beta.chat.completions.parse for structured output
-    response = await openai_async_client.beta.chat.completions.parse(
-        model=model,
-        messages=messages,
-        response_format=response_model,
-        **kwargs
-    )
-    
-    # Return the parsed object
-    return response.choices[0].message.parsed
+    try:
+        # Use beta.chat.completions.parse for structured output
+        response = await openai_async_client.beta.chat.completions.parse(
+            model=model,
+            messages=messages,
+            response_format=response_model,
+            **kwargs
+        )
+        
+        # Return the parsed object
+        return response.choices[0].message.parsed
+    except Exception as e:
+        # Enhanced error logging with URL information
+        logger.error(f"❌ Structured output failed at URL {full_url}: {str(e)}")
+        if hasattr(e, 'response'):
+            logger.error(f"Response status: {getattr(e.response, 'status_code', 'N/A')}")
+            logger.error(f"Response headers: {getattr(e.response, 'headers', 'N/A')}")
+        raise
 
 
 @retry(
