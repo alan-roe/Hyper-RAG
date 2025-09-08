@@ -36,6 +36,10 @@ except ImportError as e:
 # 设置文件路径
 SETTINGS_FILE = "settings.json"
 
+# Configure main logger
+main_logger = logging.getLogger("main")
+main_logger.setLevel(logging.DEBUG)
+
 app = FastAPI()
 
 app.add_middleware(
@@ -49,6 +53,25 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Hyper-RAG"}
+
+@app.get("/test-logging")
+async def test_logging():
+    """Test endpoint to verify logging output"""
+    import logging
+    test_logger = logging.getLogger("test")
+    
+    # Test with a very long string
+    long_string = "A" * 3000
+    test_logger.info(f"Test long string (3000 chars): {long_string}")
+    
+    # Also test the hyper_rag logger
+    hyper_logger = logging.getLogger("hyper_rag")
+    hyper_logger.info(f"Hyper RAG long string test: {long_string}")
+    
+    # Test main_logger
+    main_logger.info(f"Main logger long string test: {long_string}")
+    
+    return {"message": "Check console for logging output", "string_length": len(long_string)}
 
 
 @app.get("/db")
@@ -776,6 +799,14 @@ async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
     HyperRAG 专用的嵌入函数
     """
     try:
+        # Show what type of content is being embedded
+        if texts and len(texts) > 0:
+            sample_text = texts[0][:100] + "..." if len(texts[0]) > 100 else texts[0]
+            main_logger.info(f"[Embedding] Processing {len(texts)} texts - Sample: {sample_text}")
+        
+        import time
+        start_time = time.time()
+        
         main_logger.info(t('text_embedding_start', count=len(texts)))
         main_logger.info(t('text_total_length', length=sum(len(text) for text in texts)))
         
@@ -828,6 +859,8 @@ async def get_hyperrag_embedding_func(texts: list[str]) -> np.ndarray:
                 base_url=embedding_base_url,
             )
         
+        elapsed_time = time.time() - start_time
+        main_logger.info(f"[Embedding] Completed in {elapsed_time:.2f} seconds")
         main_logger.info(t('text_embedding_complete', dimensions=embeddings.shape))
         return embeddings
         
@@ -996,13 +1029,24 @@ async def query_hyperrag(query: QueryModel):
     Query HyperRAG using specified database for Q&A
     使用指定数据库的 HyperRAG 进行问答查询
     """
+    main_logger.info("=" * 80)
+    main_logger.info("🔍 HyperRAG Query Endpoint Called")
+    main_logger.info(f"📝 Question: {query.question}")
+    main_logger.info(f"📊 Database: {query.database}")
+    main_logger.info(f"⚙️ Mode: {query.mode}")
+    main_logger.info("=" * 80)
+    
     if not HYPERRAG_AVAILABLE:
+        main_logger.error("❌ HyperRAG is not available")
         return {"success": False, "message": "HyperRAG is not available"}
     
     try:
+        main_logger.info("🔄 Getting or creating HyperRAG instance...")
         rag = get_or_create_hyperrag(query.database)
+        main_logger.info(f"✅ HyperRAG instance obtained for database: {query.database}")
         
         # 创建查询参数
+        main_logger.info("📋 Creating query parameters...")
         param = QueryParam(
             mode=query.mode,
             top_k=query.top_k,
@@ -1013,12 +1057,17 @@ async def query_hyperrag(query: QueryModel):
             response_type=query.response_type,
             return_type='json'
         )
+        main_logger.info(f"📋 Query params: mode={param.mode}, top_k={param.top_k}, response_type={param.response_type}")
         
         # 执行查询
+        main_logger.info("🚀 Executing HyperRAG query...")
+        main_logger.info(f"   Calling rag.aquery with question: {query.question[:100]}...")
         result = await rag.aquery(query.question, param)
+        main_logger.info("✅ Query completed successfully")
+        main_logger.info(f"📊 Result keys: {list(result.keys()) if isinstance(result, dict) else 'Not a dict'}")
         
         # 处理结果格式
-        return {
+        response_data = {
             "success": True,
             "response": result.get("response", ""),
             "entities": result.get("entities", []),
@@ -1029,7 +1078,22 @@ async def query_hyperrag(query: QueryModel):
             "database": query.database or "default"
         }
         
+        main_logger.info(f"✅ Returning response with {len(response_data.get('entities', []))} entities")
+        return response_data
+        
     except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        main_logger.error("❌ Query failed with exception:")
+        main_logger.error(f"   Error type: {type(e).__name__}")
+        main_logger.error(f"   Error message: {str(e)}")
+        main_logger.error(f"   Full traceback:\n{error_traceback}")
+        
+        # Check if it's a 404 error
+        if "404" in str(e):
+            main_logger.error("🔴 404 Error detected - API endpoint not found")
+            main_logger.error("   This usually means the LLM provider doesn't support the requested endpoint")
+        
         return {"success": False, "message": f"Query failed: {str(e)}"}
 
 @app.get("/hyperrag/status")
@@ -1458,7 +1522,17 @@ def setup_comprehensive_logging():
     # 创建WebSocket处理器
     ws_handler = WebSocketLogHandler(manager)
     ws_handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    # Use cleaner format: just time and message for INFO, full details for errors
+    class CleanFormatter(logging.Formatter):
+        def format(self, record):
+            if record.levelno <= logging.INFO:
+                # For INFO and below, use simple format
+                return f"[{self.formatTime(record, '%H:%M:%S')}] {record.getMessage()}"
+            else:
+                # For WARNING and above, include more details
+                return f"[{self.formatTime(record, '%H:%M:%S')}] {record.levelname} | {record.name} | {record.getMessage()}"
+    
+    formatter = CleanFormatter()
     ws_handler.setFormatter(formatter)
     
     # 创建控制台处理器（保留控制台输出）
