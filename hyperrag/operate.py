@@ -616,6 +616,7 @@ async def extract_entities(
             }
             for dp in all_entities_data
         }
+        logger.info(f"[Entity Storage] Embedding {len(data_for_vdb)} extracted entities into vector database...")
         await entity_vdb.upsert(data_for_vdb)
 
     if relationships_vdb is not None:
@@ -628,6 +629,7 @@ async def extract_entities(
             }
             for dp in all_relationships_data
         }
+        logger.info(f"[Relationship Storage] Embedding {len(data_for_vdb)} extracted relationships into vector database...")
         await relationships_vdb.upsert(data_for_vdb)
 
     return knowledge_hypergraph_inst
@@ -721,6 +723,13 @@ async def _build_entity_query_context(
 {text_units_context}
 ```
 """
+    
+    # Log the context tables
+    logger.info("=== Entity Query Context Tables ===")
+    logger.info(f"Found {len(node_datas)} entities, {len(use_relations)} relationships, {len(use_text_units)} text units")
+    logger.info("Entity Context:\n" + entities_context[:1000] + ("..." if len(entities_context) > 1000 else ""))
+    logger.info("Relationship Context:\n" + relations_context[:1000] + ("..." if len(relations_context) > 1000 else ""))
+    logger.info("Text Units Context:\n" + text_units_context[:1000] + ("..." if len(text_units_context) > 1000 else ""))
     
     # 返回包含上下文字符串和结构化数据的字典
     return {
@@ -1155,12 +1164,27 @@ async def hyper_query(
         combine the information from the local_query and global_query,
         so that we can have the final retrieval information.
     """
-    context = combine_contexts(relation_context.get("context"), entity_context.get("context"))
+    # Handle None context gracefully
+    entity_ctx = entity_context.get("context") if entity_context else None
+    relation_ctx = relation_context.get("context") if relation_context else None
+    context = combine_contexts(relation_ctx, entity_ctx)
 
     contextJson = {
-        "entities": deduplicate_by_key(entity_context.get("entities", []) + relation_context.get("entities", []), "entity_name"),
-        "hyperedges": deduplicate_by_key(entity_context.get("hyperedges", []) + relation_context.get("hyperedges", []), "entity_set"),
-        "text_units": deduplicate_by_key(entity_context.get("text_units", []) + relation_context.get("text_units", []), "content")
+        "entities": deduplicate_by_key(
+            (entity_context.get("entities", []) if entity_context else []) + 
+            (relation_context.get("entities", []) if relation_context else []), 
+            "entity_name"
+        ),
+        "hyperedges": deduplicate_by_key(
+            (entity_context.get("hyperedges", []) if entity_context else []) + 
+            (relation_context.get("hyperedges", []) if relation_context else []), 
+            "entity_set"
+        ),
+        "text_units": deduplicate_by_key(
+            (entity_context.get("text_units", []) if entity_context else []) + 
+            (relation_context.get("text_units", []) if relation_context else []), 
+            "content"
+        )
     }
 
     if query_param.only_need_context:
@@ -1182,6 +1206,15 @@ async def hyper_query(
     sys_prompt = sys_prompt_temp.format(
         context_data=context, response_type=query_param.response_type
     )
+    
+    # Log the full context being sent to the LLM
+    logger.info("=== Final Context Being Sent to LLM ===")
+    logger.info(f"Query: {query}")
+    if define_str:
+        logger.info(f"Keywords context: {define_str}")
+    logger.info(f"Context tables preview (first 2000 chars):\n{context[:2000]}..." if len(context) > 2000 else f"Context tables:\n{context}")
+    logger.info(f"Response type requested: {query_param.response_type}")
+    
     response = await use_model_func(
         query + define_str,
         system_prompt=sys_prompt,

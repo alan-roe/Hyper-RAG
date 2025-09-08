@@ -34,6 +34,7 @@ from .utils import (
     logger,
     set_logger,
 )
+from .logging_utils import CleanLogger
 from .base import (
     BaseKVStorage,
     BaseVectorStorage,
@@ -57,6 +58,7 @@ def always_get_an_event_loop() -> asyncio.AbstractEventLoop:
 
 @dataclass
 class HyperRAG:
+    _clean_logger = CleanLogger("hyperrag")
     working_dir: str = field(
         default_factory=lambda: f"./HyperRAG_cache_{datetime.now().strftime('%Y-%m-%d-%H:%M:%S')}"
     )
@@ -236,9 +238,10 @@ class HyperRAG:
             # ----------------------------------------------------------------------------
             logger.info(f"[New Chunks] inserting {len(inserting_chunks)} chunks")
 
+            logger.info(f"[Chunk Storage] Embedding {len(inserting_chunks)} chunks into vector database...")
             await self.chunks_vdb.upsert(inserting_chunks)
             # ----------------------------------------------------------------------------
-            logger.info("[Entity Extraction]...")
+            self._clean_logger.info("Starting entity extraction", chunks=len(inserting_chunks))
             maybe_new_kg = await extract_entities(
                 inserting_chunks,
                 knowledge_hypergraph_inst=self.chunk_entity_relation_hypergraph,
