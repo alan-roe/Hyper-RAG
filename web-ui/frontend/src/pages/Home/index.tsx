@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { observer } from 'mobx-react'
 import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
@@ -42,6 +42,8 @@ import { conversations as defaultConversations } from './data'
 
 const HyperRAGHome = () => {
     const { t } = useTranslation()
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    
     // State
     const [conversations, setConversations] = useState([])
     const [activeConversationId, setActiveConversationId] = useState('')
@@ -158,6 +160,10 @@ return 'You'
         }
         setConversations(prev => [newConv, ...prev])
         setActiveConversationId(newConv.id)
+        // Auto-focus the textarea when a new conversation is created
+        setTimeout(() => {
+            textareaRef.current?.focus()
+        }, 100)
     }
 
     const deleteConversation = (id) => {
@@ -372,6 +378,11 @@ return
 
         // 添加storage事件监听器
         window.addEventListener('storage', handleStorageChange)
+        
+        // Auto-focus on initial mount
+        setTimeout(() => {
+            textareaRef.current?.focus()
+        }, 100)
 
         return () => {
             window.removeEventListener('storage', handleStorageChange)
@@ -383,6 +394,15 @@ return
             saveToStorage()
         }
     }, [conversations, activeConversationId])
+    
+    // Auto-focus when switching conversations
+    useEffect(() => {
+        if (activeConversationId) {
+            setTimeout(() => {
+                textareaRef.current?.focus()
+            }, 100)
+        }
+    }, [activeConversationId])
 
     // 当availableModes变化时，确保当前选择的mode在可用列表中
     useEffect(() => {
@@ -919,6 +939,7 @@ return
                         <div className="max-w-4xl mx-auto">
                             <div className="flex space-x-4 items-center">
                                 <Textarea
+                                    ref={textareaRef}
                                     value={inputValue}
                                     onChange={(e) => setInputValue(e.target.value)}
                                     onKeyPress={handleKeyPress}
