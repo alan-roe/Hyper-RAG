@@ -256,6 +256,11 @@ class HyperRAG:
             self.chunk_entity_relation_hypergraph = maybe_new_kg
             await self.full_docs.upsert(new_docs)
             await self.text_chunks.upsert(inserting_chunks)
+            
+            # Log successful completion
+            self._clean_logger.info(f"Document insertion completed successfully", 
+                                  documents=len(new_docs), 
+                                  chunks=len(inserting_chunks))
         finally:
             await self._insert_done()
 
