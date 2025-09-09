@@ -1107,7 +1107,20 @@ async def hyper_query(
     if max_tokens is not None:
         llm_kwargs["max_tokens"] = max_tokens
     
-    result = await use_model_func(kw_prompt, **llm_kwargs)
+    # Log before keyword extraction
+    logger.debug(f"Starting keyword extraction for query: {query[:100]}...")
+    
+    try:
+        result = await use_model_func(kw_prompt, **llm_kwargs)
+        logger.debug(f"LLM keyword extraction response received: {len(result)} chars")
+        logger.debug(f"Raw LLM response: {result[:500]}...")
+    except Exception as e:
+        logger.error(f"LLM call failed during keyword extraction: {e}")
+        # Return empty context for context-only queries
+        if query_param.only_need_context and query_param.return_type == "json":
+            logger.warning("Returning empty context due to LLM failure")
+            return {"entities": [], "hyperedges": [], "text_units": []}
+        return PROMPTS["fail_response"]
 
     try:
         keywords_data = json.loads(result)
@@ -1115,7 +1128,9 @@ async def hyper_query(
         relation_keywords = keywords_data.get("high_level_keywords", [])
         entity_keywords = ", ".join(entity_keywords)
         relation_keywords = ", ".join(relation_keywords)
-    except json.JSONDecodeError:
+        logger.debug(f"Keywords extracted - entities: {entity_keywords}, relations: {relation_keywords}")
+    except json.JSONDecodeError as e:
+        logger.warning(f"Initial JSON parse failed: {e}, attempting cleanup...")
         try:
             result = (
                 result.replace(kw_prompt[:-1], "")
@@ -1129,9 +1144,18 @@ async def hyper_query(
             entity_keywords = keywords_data.get("low_level_keywords", [])
             relation_keywords = ", ".join(relation_keywords)
             entity_keywords = ", ".join(entity_keywords)
+            logger.debug(f"Keywords extracted after cleanup - entities: {entity_keywords}, relations: {relation_keywords}")
         # Handle parsing error
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
+        except (json.JSONDecodeError, IndexError, KeyError) as e2:
+            logger.error(f"Failed to extract keywords after cleanup: {e2}")
+            logger.debug(f"Raw LLM response was: {result}")
+            
+            # Handle context-only queries gracefully
+            if query_param.only_need_context:
+                logger.info("Using fallback: no keywords extracted, returning empty context")
+                if query_param.return_type == "json":
+                    return {"entities": [], "hyperedges": [], "text_units": []}
+                return ""
             return PROMPTS["fail_response"]
     """
         Perform different actions based on keywords:
@@ -1189,6 +1213,13 @@ async def hyper_query(
 
     if query_param.only_need_context:
         if query_param.return_type == "json":
+            # Log if context is empty
+            if not contextJson["entities"] and not contextJson["hyperedges"] and not contextJson["text_units"]:
+                logger.warning("Returning empty context - no results found or keyword extraction may have failed")
+            else:
+                logger.info(f"Returning context with {len(contextJson['entities'])} entities, "
+                           f"{len(contextJson['hyperedges'])} hyperedges, "
+                           f"{len(contextJson['text_units'])} text units")
             return contextJson
         return context
     if context is None:
@@ -1257,13 +1288,28 @@ async def hyper_query_lite(
     if max_tokens is not None:
         llm_kwargs["max_tokens"] = max_tokens
     
-    result = await use_model_func(kw_prompt, **llm_kwargs)
+    # Log before keyword extraction
+    logger.debug(f"[hyper_query_lite] Starting keyword extraction for query: {query[:100]}...")
+    
+    try:
+        result = await use_model_func(kw_prompt, **llm_kwargs)
+        logger.debug(f"[hyper_query_lite] LLM keyword extraction response received: {len(result)} chars")
+        logger.debug(f"[hyper_query_lite] Raw LLM response: {result[:500]}...")
+    except Exception as e:
+        logger.error(f"[hyper_query_lite] LLM call failed during keyword extraction: {e}")
+        # Return empty context for context-only queries
+        if query_param.only_need_context and query_param.return_type == "json":
+            logger.warning("[hyper_query_lite] Returning empty context due to LLM failure")
+            return {"entities": [], "hyperedges": [], "text_units": []}
+        return PROMPTS["fail_response"]
 
     try:
         keywords_data = json.loads(result)
         entity_keywords = keywords_data.get("low_level_keywords", [])
         entity_keywords = ", ".join(entity_keywords)
-    except json.JSONDecodeError:
+        logger.debug(f"[hyper_query_lite] Keywords extracted - entities: {entity_keywords}")
+    except json.JSONDecodeError as e:
+        logger.warning(f"[hyper_query_lite] Initial JSON parse failed: {e}, attempting cleanup...")
         try:
             result = (
                 result.replace(kw_prompt[:-1], "")
@@ -1275,9 +1321,18 @@ async def hyper_query_lite(
             keywords_data = json.loads(result)
             entity_keywords = keywords_data.get("low_level_keywords", [])
             entity_keywords = ", ".join(entity_keywords)
+            logger.debug(f"[hyper_query_lite] Keywords extracted after cleanup - entities: {entity_keywords}")
         # Handle parsing error
-        except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
+        except (json.JSONDecodeError, IndexError, KeyError) as e2:
+            logger.error(f"[hyper_query_lite] Failed to extract keywords after cleanup: {e2}")
+            logger.debug(f"[hyper_query_lite] Raw LLM response was: {result}")
+            
+            # Handle context-only queries gracefully
+            if query_param.only_need_context:
+                logger.info("[hyper_query_lite] Using fallback: no keywords extracted, returning empty context")
+                if query_param.return_type == "json":
+                    return {"entities": [], "hyperedges": [], "text_units": []}
+                return ""
             return PROMPTS["fail_response"]
     """
         Perform different actions based on keywords:
@@ -1303,6 +1358,19 @@ async def hyper_query_lite(
 
     if query_param.only_need_context:
         if query_param.return_type == "json":
+            # Log context information
+            if entity_context:
+                entities_count = len(entity_context.get("entities", []))
+                hyperedges_count = len(entity_context.get("hyperedges", []))
+                text_units_count = len(entity_context.get("text_units", []))
+                if entities_count == 0 and hyperedges_count == 0 and text_units_count == 0:
+                    logger.warning("[hyper_query_lite] Returning empty context - no results found")
+                else:
+                    logger.info(f"[hyper_query_lite] Returning context with {entities_count} entities, "
+                               f"{hyperedges_count} hyperedges, {text_units_count} text units")
+            else:
+                logger.warning("[hyper_query_lite] entity_context is None, returning empty result")
+                return {"entities": [], "hyperedges": [], "text_units": []}
             return entity_context
         return context
     if context is None:
