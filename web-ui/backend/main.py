@@ -1758,7 +1758,7 @@ async def process_files_with_progress(request: FileEmbedRequest, total_files: in
                 await rag.ainsert(content)
                 
                 print(f"✅ {t('document_embedding_complete')}")
-                main_logger.info(t('embedding_document_message', filename=file_info['filename'], database=database_name))
+                main_logger.info(t('file_embed_complete', filename=file_info['filename'], database=database_name))
                 
                 # 更新文件状态为已嵌入
                 file_manager.update_file_status(file_id, "embedded")
