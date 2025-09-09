@@ -723,7 +723,7 @@ async def bedrock_embedding(
 async def local_embedding(
     texts: list[str],
     base_url: str = "http://localhost:1234",
-    model: str = "nomic-ai/nomic-embed-text-v2-moe-GGUF",
+    model: str = "unsloth/embeddinggemma-300m-GGUF",
     api_key: str = None,
     batch_size: int = 32,
     **kwargs
