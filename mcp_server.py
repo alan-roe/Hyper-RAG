@@ -8,7 +8,6 @@ allowing LLMs to query HyperRAG databases for enriched context.
 import sys
 import os
 import json
-import asyncio
 import logging
 import traceback
 from pathlib import Path
@@ -26,7 +25,8 @@ logging.basicConfig(
 logging.getLogger("hyper_rag").setLevel(logging.ERROR)
 logging.getLogger("hyperrag").setLevel(logging.ERROR)
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
+from fastmcp.utilities.logging import get_logger
 
 # Import HyperRAG components
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,9 +35,13 @@ from hyperrag import HyperRAG
 from hyperrag.base import QueryParam
 from hyperrag.llm import openai_complete_if_cache, openai_embedding
 from hyperrag.llm_structured_wrapper import create_smart_llm_func
+from hyperrag.utils import encode_string_by_tiktoken
 
 
 mcp = FastMCP("HyperRAG Context Server")
+
+# Create module logger for server-side logging
+logger = get_logger(__name__)
 
 # Global configuration
 SETTINGS_FILE = Path(__file__).parent / "web-ui" / "backend" / "settings.json"
@@ -162,7 +166,7 @@ async def list_databases() -> List[str]:
 
 
 @mcp.tool
-async def query_context(query: str, database: str, max_tokens, mode: str = None, top_k: int = None) -> Dict:
+async def query_context(query: str, database: str, max_tokens, ctx: Context = None) -> Dict:
     """
     Query a HyperRAG database for enriched context
     
@@ -173,15 +177,24 @@ async def query_context(query: str, database: str, max_tokens, mode: str = None,
         query: The question or query to search for context
         database: The name of the database to query
         max_tokens: Maximum tokens for context (controls retrieval size)
-        mode: Optional retrieval mode ('hyper', 'hyper-lite', 'graph', 'naive')
-        top_k: Optional number of top results to retrieve
+        ctx: FastMCP context for client logging
     
     Returns:
         Dictionary containing the enriched context with entities, 
         relationships, and text units
     """
     try:
+        # Log incoming request
+        if ctx:
+            await ctx.info(f"Query request received for database '{database}'", extra={
+                "query": query[:100] if len(query) > 100 else query,
+                "database": database,
+                "max_tokens": max_tokens,
+            })
+        
         # Get or create HyperRAG instance
+        if ctx:
+            await ctx.debug(f"Getting HyperRAG instance for database '{database}'")
         rag = get_or_create_hyperrag(database)
         
         # Dynamically adjust parameters based on max_tokens to prevent huge responses
@@ -191,6 +204,8 @@ async def query_context(query: str, database: str, max_tokens, mode: str = None,
                 max_tokens = int(max_tokens)
             except (ValueError, TypeError):
                 max_tokens = 4000  # Default if conversion fails
+                if ctx:
+                    await ctx.warning(f"Invalid max_tokens value, using default: 4000")
         else:
             max_tokens = 4000  # Set a reasonable default
         
@@ -202,14 +217,14 @@ async def query_context(query: str, database: str, max_tokens, mode: str = None,
             max_token_for_text = 300
             max_token_for_entity = 100
             max_token_for_relation = 300
-            default_mode = "hyper-lite"  # Use lighter mode for small contexts
+            default_mode = "hyper" 
         elif max_tokens <= 2000:
             # Small context - reduced retrieval
             default_top_k = 20
             max_token_for_text = 500
             max_token_for_entity = 150
             max_token_for_relation = 500
-            default_mode = "hyper-lite"
+            default_mode = "hyper"
         elif max_tokens <= 4000:
             # Medium context - balanced retrieval
             default_top_k = 30
@@ -226,8 +241,8 @@ async def query_context(query: str, database: str, max_tokens, mode: str = None,
             default_mode = "hyper"
         
         # Use provided parameters or defaults
-        final_mode = mode if mode is not None else default_mode
-        final_top_k = top_k if top_k is not None else default_top_k
+        final_mode = default_mode
+        final_top_k = default_top_k
         
         # Create query parameters with scaled values
         param = QueryParam(
@@ -240,10 +255,46 @@ async def query_context(query: str, database: str, max_tokens, mode: str = None,
         
         # Log the parameters being used for debugging
         sys.stderr.write(f"Query with max_tokens={max_tokens}, using mode={final_mode}, top_k={final_top_k}\n")
+        logger.info(f"Query parameters: max_tokens={max_tokens}, mode={final_mode}, top_k={final_top_k}")
+        
+        if ctx:
+            await ctx.debug(f"Starting context extraction with mode='{final_mode}', top_k={final_top_k}")
         
         # Use the new aget_context method to get context without response generation
         # Pass max_tokens if specified
         result = await rag.aget_context(query, param, max_tokens)
+        
+        # Count tokens in the response
+        total_tokens = 0
+        if result and isinstance(result, dict):
+            # Convert result to JSON string to count tokens
+            result_json = json.dumps(result, ensure_ascii=False)
+            total_tokens = len(encode_string_by_tiktoken(result_json))
+            
+            # Log token count to stderr for debugging
+            sys.stderr.write(f"Response contains {total_tokens} tokens (requested max: {max_tokens})\n")
+            logger.info(f"Response token count: {total_tokens} (requested max: {max_tokens})")
+        
+        # Log the results
+        if ctx:
+            if result and isinstance(result, dict):
+                entities_count = len(result.get("entities", []))
+                hyperedges_count = len(result.get("hyperedges", []))
+                text_units_count = len(result.get("text_units", []))
+                
+                if entities_count == 0 and hyperedges_count == 0 and text_units_count == 0:
+                    await ctx.warning("Query returned empty context - no matching entities, hyperedges, or text units found")
+                    await ctx.debug("This may indicate a keyword extraction failure or no relevant content in the database")
+                else:
+                    await ctx.info(f"Context retrieved successfully", extra={
+                        "entities": entities_count,
+                        "hyperedges": hyperedges_count,
+                        "text_units": text_units_count,
+                        "total_tokens": total_tokens,
+                        "requested_max_tokens": max_tokens
+                    })
+            else:
+                await ctx.warning(f"Unexpected result format: {type(result)}")
         
         # Result should already be in the correct format from aget_context
         return result
@@ -253,6 +304,14 @@ async def query_context(query: str, database: str, max_tokens, mode: str = None,
         sys.stderr.write(f"ERROR: {error_msg}\n")
         sys.stderr.write(f"Query: {query}\n")
         traceback.print_exc(file=sys.stderr)
+        logger.error(f"Query failed: {error_msg}", exc_info=True)
+        
+        if ctx:
+            await ctx.error(f"Query failed: {str(e)}", extra={
+                "database": database,
+                "query": query[:100] if len(query) > 100 else query,
+                "error_type": type(e).__name__
+            })
         
         return {
             "error": str(e),
